@@ -1,13 +1,13 @@
 package dev.housecontrol.tv;
 import org.json.*;
 import java.util.*;
-/** An isolated in-memory home. This class has no cloud client, context, or device transport. */
+/** An isolated in-memory home. This class has no hub client, context, or device transport. */
 final class DemoHome {
  final JSONObject plan,state;final String revision="demo-"+UUID.randomUUID();
  DemoHome(JSONObject source)throws Exception{
   plan=CloudMapper.copy(source);state=new JSONObject().put("lights",new JSONObject()).put("acs",new JSONObject()).put("scene",JSONObject.NULL);
   for(String section:new String[]{"lights","acs"}){JSONArray devices=plan.optJSONArray(section);if(devices==null)continue;for(int i=0;i<devices.length();i++){
-   JSONObject d=devices.getJSONObject(i);for(String forbidden:new String[]{"tuya","link","sensor"})if(d.has(forbidden))throw new IllegalArgumentException("Demo homes cannot contain real-device bindings.");
+   JSONObject d=devices.getJSONObject(i);for(String forbidden:new String[]{"link","sensor"})if(d.has(forbidden))throw new IllegalArgumentException("Demo homes cannot contain real-device bindings.");
    d.put("linked",false);JSONObject value=section.equals("lights")?new JSONObject().put("on",true).put("brightness",.85).put("temp",3400).put("color",d.opt("color")):new JSONObject().put("on",false).put("target",23).put("mode","cool").put("fan","auto");state.getJSONObject(section).put(d.getString("id"),value);
   }}
  }

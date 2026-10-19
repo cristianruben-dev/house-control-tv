@@ -101,7 +101,7 @@ function renderDevices() {
 function update() {
   if (!config || !$('#status')) return;
   const on = Object.values(store.state.lights).filter(s => s.on).length;
-  $('#status').textContent = (demo || bundle?.mode === 'demo') ? 'Demo · no real devices' : bundle?.mode === 'standalone' ? (bundle.connectionLabel || (online ? 'TV · Smart Life connected' : 'Connect Smart Life on TV')) : online ? 'Synced with Mac' : 'Mac offline · view only';
+  $('#status').textContent = (demo || bundle?.mode === 'demo') ? 'Demo · no real devices' : bundle?.mode === 'standalone' ? (bundle.connectionLabel || (online ? 'TV connected' : 'Connect your devices on TV')) : online ? 'Synced with Mac' : 'Mac offline · view only';
   $('#status').classList.toggle('offline', !online && !demo);
   $('#lights-on').textContent = on;
   $('#lights-total').textContent = 'of ' + config.lights.length + ' on';
@@ -230,26 +230,20 @@ async function openStandaloneSync() {
   const owner=modal;let timer=0;modalCleanup=()=>clearTimeout(timer);
   const alive=()=>modal===owner;
   const message=el('p','sync-note');message.setAttribute('role','status');
-  let auth;
-  try { auth=await api('/api/auth/status'); } catch(error) {content.append(el('p','setup-error',error.message));return;}
-  if(!alive())return;
   async function showHome() {
     clearTimeout(timer);content.replaceChildren();
-    auth=await api('/api/auth/status');if(!alive())return;
-    content.append(el('p','eyebrow','YOUR TV. YOUR HOME.'),el('h2','',auth.connected?'Ready without your Mac':'Connect Smart Life to your TV'),el('p','sync-description',auth.connected?'Your TV stores this home and sends commands directly to Smart Life. Your Mac can be off.':'One scan gives this TV its own Smart Life connection. Your Mac and iPhone app keep their own sign-ins.'));
-    if(!auth.connected){
-      const form=el('div','login-form');const label=el('label','','Smart Life User Code');label.htmlFor='user-code';const code=el('input');code.id='user-code';code.value=auth.userCode||'';code.autocomplete='off';code.spellcheck=false;code.placeholder='From Smart Life account settings';
-      const connect=button('Show Smart Life QR','Smartphone',()=>showLogin(code.value),'primary');form.append(label,code,connect);content.append(form);
-      content.append(el('p','sync-note','In Smart Life: Me → Settings → Account and Security → User Code. Then use Smart Life’s + → Scan to scan the QR on this TV.'));
-    } else content.append(el('div','sync-state','Smart Life connected · credentials stored on this TV'));
+    let status;
+    try { status=await api('/api/connections'); } catch(error) {content.append(el('p','setup-error',error.message));return;}
+    if(!alive())return;
+    const ha=status.homeassistant,hue=status.hue,connected=[ha.connected&&'Home Assistant',hue.connected&&'Hue'].filter(Boolean);
+    content.append(el('p','eyebrow','YOUR TV. YOUR HOME.'),el('h2','',connected.length?'Ready without your Mac':'Connect your devices to this TV'),el('p','sync-description',connected.length?'Your TV stores this home and sends commands directly to your devices. Your Mac can be off.':'Connect Home Assistant or pair a Philips Hue Bridge. The TV talks to them directly on your Wi-Fi.'));
+    content.append(el('div','sync-state',connected.length?connected.join(' · ')+' connected · credentials stored on this TV':'No hub connected yet'));
     const remote=el('div','sync-content');const qr=el('canvas','qr');const text=el('div');text.append(el('h3','','Control from your phone'),el('p','','Scan this private link with your camera. Your phone connects directly to this TV on Wi-Fi. Keep the TV awake with House Control or Luma open.'),el('p','sync-note','Settings sync automatically from your paired Mac when it is awake. Your TV keeps its own device state and works when the Mac is off. You can also import a floor plan JSON from your phone.'));
     remote.append(qr,text);content.append(remote);QRCode.toCanvas(qr,remoteURL(bundle?.endpoint),{width:260,margin:2,color:{dark:'#0a0e1a',light:'#ffffff'}}).catch(()=>qr.remove());
     const file=el('input','plan-file');file.type='file';file.accept='.json,application/json';file.setAttribute('aria-label','Import House Control floor plan');
     file.onchange=async()=>{if(!file.files?.[0])return;try{const data=JSON.parse(await file.files[0].text());await api('/api/import',data);toast('Floor plan saved on TV');closeModal();}catch(error){message.textContent=error.message;}};
     const importRow=el('div','import-row');importRow.append(el('span','','Import floor plan JSON'),file);if(!nativeConfig)content.append(importRow);content.append(message);
-    content.append(button('Home Assistant & Hue','Wifi',showServices,'secondary'),button('Explore demo home','House',()=>switchDemo(true),'secondary'));
-    if(auth.connected){const reconnect=button('Renew Smart Life connection','RefreshCw',()=>showLogin(auth.userCode),'secondary');content.append(reconnect);}
-    content.append(...infoButtons());
+    content.append(button('Home Assistant & Hue','Wifi',showServices,connected.length?'secondary':'primary'),button('Explore demo home','House',()=>switchDemo(true),'secondary'));
   }
   async function showServices() {
     clearTimeout(timer);content.replaceChildren(el('h2','','Looking for your hubs…'));
@@ -293,19 +287,6 @@ async function openStandaloneSync() {
     }
     async function discover(){try{found=await api('/api/connections/discover',{});}catch{}if(alive())render();}
     render();if(!status.homeassistant.connected||!status.hue.connected)discover();
-  }
-  async function showLogin(code) {
-    clearTimeout(timer);content.replaceChildren(el('h2','','Preparing your QR code…'));let ticket;
-    try {ticket=await api('/api/auth/start',{userCode:code});}catch(error){content.replaceChildren(el('h2','','Could not start Smart Life login'),el('p','sync-description',error.message),button('Try again','RefreshCw',showHome,'primary'));return;}
-    if(!alive())return;
-    const qr=el('canvas','login-qr');const info=el('p','sync-description','Open Smart Life on your phone → + → Scan. Scan this code on the TV, then approve the connection in Smart Life.');
-    const status=el('p','sync-state','Waiting for approval in Smart Life…');
-    content.replaceChildren(el('p','eyebrow','ONE-TIME TV SIGN-IN'),el('h2','','Scan with Smart Life'),info,qr,status,button('New QR code','RefreshCw',()=>showLogin(code),'secondary'));
-    await QRCode.toCanvas(qr,ticket.qrContent,{width:330,margin:3,color:{dark:'#0a0e1a',light:'#ffffff'}});
-    content.querySelector('button')?.focus();
-    let failures=0;
-    async function check(){if(!alive())return;try{const result=await api('/api/auth/check',{});if(!alive())return;if(result.connected&&!result.pending){toast('Smart Life connected directly to your TV');await showHome();return;}failures=0;}catch(error){if(!alive())return;status.textContent=error.message;if(++failures>=3)return;}timer=setTimeout(check,2500);}
-    timer=setTimeout(check,2000);
   }
   await showHome();
 }
@@ -378,7 +359,7 @@ async function loadDemo(){
   store.state={lights:Object.fromEntries(config.lights.map(d=>[d.id,{on:true,brightness:.75,temp:3000,color:null}])),acs:Object.fromEntries(config.acs.map(d=>[d.id,{on:false,target:23,mode:'cool',fan:'auto'}])),scene:null};render();
 }
 function showSetup(error){
-  app.replaceChildren();const box=el('div','setup');box.append(icon('House',58),el('h1','','Your home belongs on the big screen'),el('p','','Import your home once with sync-tv.py, then connect Smart Life on this TV. Your Mac is not needed for everyday control.'),el('p','setup-error',error.message));
+  app.replaceChildren();const box=el('div','setup');box.append(icon('House',58),el('h1','','Your home belongs on the big screen'),el('p','','Import your home once with sync-tv.py or from your phone, then connect Home Assistant or Hue on this TV. Your Mac is not needed for everyday control.'),el('p','setup-error',error.message));
   box.append(button('Try again','RefreshCw',()=>location.reload(),'primary'),button('Explore demo','House',loadDemo,'secondary'));app.append(box);box.querySelector('button').focus();
 }
 async function boot(){

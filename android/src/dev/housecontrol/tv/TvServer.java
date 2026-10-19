@@ -26,7 +26,7 @@ final class TvServer {
         if(!method.equals("GET")&&!method.equals("POST")){reply(s,405,"text/plain","Method not allowed".getBytes(SharingTransport.UTF8));return;}
         if(path.startsWith("/api/")){
             String auth=headers.getOrDefault("authorization","");if(!MessageDigest.isEqual(auth.getBytes(SharingTransport.UTF8),("Bearer "+token).getBytes(SharingTransport.UTF8))){json(s,401,new JSONObject().put("error","Open the private QR link from your TV."));return;}
-            Set<String> gets=new HashSet<>(Arrays.asList("/api/home","/api/auth/status","/api/connections"));if((method.equals("GET")&&!gets.contains(path))||(method.equals("POST")&&gets.contains(path))){json(s,405,new JSONObject().put("error","Invalid request method."));return;}
+            Set<String> gets=new HashSet<>(Arrays.asList("/api/home","/api/connections"));if((method.equals("GET")&&!gets.contains(path))||(method.equals("POST")&&gets.contains(path))){json(s,405,new JSONObject().put("error","Invalid request method."));return;}
             int length=Integer.parseInt(headers.getOrDefault("content-length","0"));if(length<0||length>512*1024){json(s,413,new JSONObject().put("error","Import is too large."));return;}
             byte[] body=new byte[length];int offset=0,n;while(offset<length&&(n=in.read(body,offset,length-offset))!=-1)offset+=n;if(offset!=length)throw new IOException("Incomplete request");
             try{JSONObject result=engine.handle(path,length==0?new JSONObject():new JSONObject(new String(body,SharingTransport.UTF8)));if(path.equals("/api/home"))result.put("endpoint",endpoint());json(s,200,result);}catch(Exception e){json(s,400,new JSONObject().put("error",HomeEngine.safe(e)));}

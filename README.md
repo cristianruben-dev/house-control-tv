@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/0xProbabillity/house-control">House Control</a> on your Android TV: your home as a live 3D model,
-  its lights, air conditioners and scenes,<br>controlled straight from the TV through Smart Life, Home Assistant and Philips Hue. Your Mac can be off.
+  its lights, air conditioners and scenes,<br>controlled straight from the TV through Home Assistant and Philips Hue. Your Mac can be off.
 </p>
 
 <p align="center">
@@ -25,10 +25,10 @@
   rooms, furniture, lamps that light the scene. Pick a room to fly to it, or explore the model with the remote.
 - **Lights, air conditioners, scenes.** Switch lamps, turn ACs on and off and set their temperature, run your
   scenes. Scenes dim and colour lamps, and only change what is not already right.
-- **The TV does it itself.** It keeps its own copy of your home and talks to your devices directly: Smart Life
-  with its own sign-in, Home Assistant and Philips Hue over your Wi-Fi. No Mac, no server, no account of ours.
+- **The TV does it itself.** It keeps its own copy of your home and talks to your devices directly: Home Assistant
+  and Philips Hue over your Wi-Fi. No Mac, no server, no account of ours.
 - **Live.** Changes made elsewhere (a wall switch, the Hue app, an automation) show up within a second through Home
-  Assistant's and Hue's event streams; Smart Life is read every 12 seconds while the TV is in use.
+  Assistant's and Hue's event streams.
 - **Your phone as a remote.** Scan a private QR code on the TV and your phone controls the same home over Wi-Fi.
 - **Stays in step with your Mac.** Edit the plan, a device link or a scene in House Control on the Mac and the TV
   has it seconds later. The Mac's Home Assistant and Hue connections come along, so there is nothing to set up twice.
@@ -47,7 +47,6 @@
 
 | Platform | How the TV connects |
 | --- | --- |
-| ✓ **Smart Life / Tuya** | Its own sign-in: scan a QR code with the Smart Life app |
 | ✓ **Home Assistant** | Your server's API on your network, with a long-lived access token |
 | ✓ **Philips Hue** | The Hue Bridge's local API: press its button once |
 | — **Apple Home** | Not on the TV: HomeKit exists only on Apple devices. Add HomeKit or Matter devices to Home Assistant to switch them here |
@@ -96,10 +95,6 @@ Everything is in **Sync & connect** (the button at the top right, or Menu on the
 of the plan to a real device happens in House Control's editor on the Mac (or in the plan JSON); the TV follows
 those links. Devices that are not linked are simulated.
 
-**Smart Life.** Enter the User Code from *Smart Life → Me → Settings → Account and Security*, choose **Show Smart
-Life QR**, and scan it with *Smart Life → + → Scan*. The TV gets its own session and renews it by itself; your Mac's
-and iPhone's sign-ins are never copied.
-
 **Home Assistant.** In Home Assistant, open your profile → *Security* → *Long-lived access tokens* → *Create
 token*. Typing a token with a remote is slow, so open the phone companion and paste the server address (for example
 `http://192.168.1.20:8123`) and the token there; they go straight to the TV. Servers on the network are listed by
@@ -137,8 +132,8 @@ building. Luma never receives a password, token or the phone key.
 
 - The plan and device ids stay in the app's private storage; screens, the phone and Luma get a copy without device
   bindings.
-- The Smart Life session and the Home Assistant and Hue credentials are encrypted with a non-exportable Android
-  Keystore key (`smartlife.enc`, `homeassistant.enc`, `hue.enc`). **Disconnect** deletes them. No status, error or log
+- The Home Assistant and Hue credentials are encrypted with a non-exportable Android Keystore key
+  (`homeassistant.enc`, `hue.enc`). **Disconnect** deletes them. No status, error or log
   contains a token or bridge key.
 - A Home Assistant token over plain `http://` only goes to an address on your home network; `https://` (your own
   domain or Nabu Casa) is checked against the system's certificates. Requests skip any proxy and never follow
@@ -147,14 +142,13 @@ building. Luma never receives a password, token or the phone key.
   refuses any other device at that address afterwards.
 - The TV serves the phone companion and its API on port **8788** of your home network, behind the random key. Do not
   forward that port to the internet.
-- Smart Life's cloud is the only internet service involved, plus Philips' bridge discovery when your network blocks
-  mDNS. There are no analytics.
+- The only internet service involved is Philips' bridge discovery, and only when your network blocks mDNS. There are no analytics.
 
 ## Good to know
 
 - This is not an always-on hub. The TV controls your home while House Control or Luma is open; a sleeping TV, or
-  Android closing the app, makes the phone link unavailable until it is opened again. Run automations in Smart
-  Life or Home Assistant.
+  Android closing the app, makes the phone link unavailable until it is opened again. Run automations in Home
+  Assistant or the Hue app.
 - Air conditioners on the TV: power and target temperature. Modes, fan speeds and the plan itself are edited in
   House Control on the Mac or iPhone.
 - An infrared AC's power state is an estimate: its own handheld remote cannot report back.
@@ -165,8 +159,7 @@ building. Luma never receives a password, token or the phone key.
 ./tv.sh test
 ```
 
-Runs the Java tests (Smart Life envelope against a Swift CryptoKit vector, device mappings, Home Assistant and Hue
-mappings and validation), then the real Home Assistant and Hue clients against [`tools/mock_hubs.py`](tools/mock_hubs.py)
+Runs the Java tests (plan patches, the demo home, Home Assistant and Hue mappings and validation), then the real Home Assistant and Hue clients against [`tools/mock_hubs.py`](tools/mock_hubs.py)
 on loopback (pairing, reads, commands, live updates, certificate pinning), then the Mac sync tests.
 `python3 tools/mock_hubs.py --host 0.0.0.0 --auto` runs the pretend Home Assistant (port 18123, prints its token)
 and Hue Bridge (port 18443) for trying the TV without hardware. The author, links and tip addresses shown in *Sync & connect → About* and
@@ -262,13 +255,9 @@ TWtWLJp2Hc6242RynhU1B4Uujru3tppb3B
 
 ## Acknowledgements and disclaimer
 
-The Smart Life sign-in follows Tuya's open-source
-[`tuya-device-sharing-sdk`](https://github.com/tuya/tuya-device-sharing-sdk), the library behind the Tuya
-integration in Home Assistant, as House Control does. The 3D view is built with [Three.js](https://threejs.org); the
-icons are from [Lucide](https://lucide.dev), the network logos under [Support the project](#support-the-project)
-from [Web3 Icons](https://github.com/0xa3k5/web3icons) (MIT).
+The 3D view is built with [Three.js](https://threejs.org); the icons are from [Lucide](https://lucide.dev).
 
-This project is not affiliated with or endorsed by Tuya, Smart Life, Home Assistant, Signify (Philips Hue), Google
+This project is not affiliated with or endorsed by Home Assistant, Signify (Philips Hue), Google
 or Apple. It relies on interfaces these companies can change at any time. Use it at your own risk.
 
 ## License

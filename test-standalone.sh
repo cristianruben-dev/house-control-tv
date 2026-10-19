@@ -9,7 +9,7 @@ if [ ! -f .local/test-libs/json.jar ]; then
 fi
 CP=".local/test-libs/json.jar:$SDK/platforms/android-34/android.jar"
 SRC=android/src/dev/housecontrol/tv
-"$JDK/bin/javac" -cp "$CP" -d .local/test-classes $SRC/{SharingTransport,SecretStore,SecureVault,SmartLifeClient,CloudMapper,DemoHome,LocalMapper,MiniWebSocket,HomeAssistantClient,HueClient}.java tests/java/StandaloneTests.java tests/java/LocalHubTests.java
+"$JDK/bin/javac" -cp "$CP" -d .local/test-classes $SRC/{SharingTransport,SecretStore,SecureVault,CloudMapper,DemoHome,LocalMapper,MiniWebSocket,HomeAssistantClient,HueClient}.java tests/java/StandaloneTests.java tests/java/LocalHubTests.java
 "$JDK/bin/java" -cp ".local/test-classes:$CP" dev.housecontrol.tv.StandaloneTests
 
 # Home Assistant and Hue against the mock hubs on loopback (a current and a pre-2022.4 Home Assistant).

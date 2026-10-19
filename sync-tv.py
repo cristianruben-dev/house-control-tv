@@ -12,9 +12,7 @@ def main():
  snap=json.loads(widgets.read_text()) if widgets.exists() else {'lights':[],'acs':[]};state={'lights':{},'acs':{},'scene':snap.get('scene')}
  for section,keys in [('lights',['on','brightness','temp','color']),('acs',['on','target','mode','fan','roomTemp','swing','sleep','eco'])]:
   for d in snap[section]:state[section][d['id']]={k:d[k] for k in keys if k in d}
- # Only the non-secret User Code is copied. TV gets its own login through Smart Life QR approval.
- account=Path.home()/'Library/Application Support/HouseControl/smartlife.json';user_code=json.loads(account.read_text()).get('userCode','') if account.exists() else ''
- payload={'plan':raw,'state':state,'userCode':user_code}
+ payload={'plan':raw,'state':state}
  if args.install:subprocess.run(['adb','-s',device,'install','-r',str(ROOT/'android/dist/house-control-tv.apk')],check=True,capture_output=True)
  local=ROOT/'.local';local.mkdir(exist_ok=True);keyfile=local/'tv-direct.json'
  direct=json.loads(keyfile.read_text()) if keyfile.exists() else {'token':secrets.token_urlsafe(32)}
@@ -36,5 +34,5 @@ def main():
   except Exception:pass
   time.sleep(1)
  if not confirmed:raise SystemExit('TV did not confirm the import. Keep House Control open and check that this Mac has the private key from this TV; a previously paired TV rejects an unknown key.')
- print('Home copied to TV. No Smart Life access or refresh tokens were transferred.')
+ print('Home copied to TV. No credentials were transferred.')
 if __name__=='__main__':main()

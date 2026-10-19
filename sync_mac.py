@@ -3,7 +3,7 @@
 
 Besides the plan, the Mac app's Home Assistant and Hue connections (address + token / bridge key + certificate pin,
 the same ones it shares with a paired iPhone) are passed on so the TV can control those devices with the Mac off.
-Set HOUSE_TV_SYNC_CONNECTIONS=0 to keep them on the Mac. Smart Life sessions are never read or sent."""
+Set HOUSE_TV_SYNC_CONNECTIONS=0 to keep them on the Mac."""
 import argparse
 import hashlib
 import ipaddress

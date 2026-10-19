@@ -104,7 +104,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void exit() { runOnUiThread(() -> finish()); }
         @JavascriptInterface public void request(int id, String path, String body) {
-            if (!java.util.Arrays.asList("/api/demo/action","/api/demo","/api/home","/api/action","/api/auth/status","/api/auth/start","/api/auth/check","/api/auth/logout","/api/import","/api/connections","/api/connections/discover","/api/homeassistant/connect","/api/homeassistant/disconnect","/api/hue/pair","/api/hue/disconnect").contains(path)) return;
+            if (!java.util.Arrays.asList("/api/demo/action","/api/demo","/api/home","/api/action","/api/import","/api/connections","/api/connections/discover","/api/homeassistant/connect","/api/homeassistant/disconnect","/api/hue/pair","/api/hue/disconnect").contains(path)) return;
             network.execute(() -> {
                 JSONObject result;
                 try {

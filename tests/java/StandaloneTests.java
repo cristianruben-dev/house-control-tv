@@ -5,34 +5,7 @@ public class StandaloneTests {
  static int tests=0;
  static void check(boolean ok,String name){if(!ok)throw new AssertionError(name);tests++;}
  public static void main(String[] args)throws Exception{
-  JSONObject pair=new JSONObject().put("homeId","home").put("on","on-scene").put("off","off-scene"),link=new JSONObject().put("sceneSwitch",pair);
-  check(CloudMapper.sceneCommand(link,new JSONObject().put("on",true)).getString("sceneId").equals("on-scene"),"IR switch on scene");
-  check(CloudMapper.sceneCommand(link,new JSONObject().put("on",false)).getString("sceneId").equals("off-scene"),"IR switch off scene");
-  boolean badPair=false;try{CloudMapper.sceneCommand(new JSONObject().put("sceneSwitch",new JSONObject().put("homeId","home").put("on","same").put("off","same")),new JSONObject().put("on",true));}catch(java.io.IOException e){badPair=true;}check(badPair,"Reject toggle scene as on/off pair");
-  badPair=false;try{CloudMapper.sceneCommand(link,new JSONObject().put("on",true).put("brightness",.5));}catch(java.io.IOException e){badPair=true;}check(badPair,"IR switch rejects unsupported dimming");
-  String rid="11111111-2222-3333-4444-555555555555",hash=SharingTransport.md5(rid+"refresh-token"),secret=SharingTransport.secret(rid,hash);
-  String cipher=SharingTransport.encrypt("{\"homeId\":\"42\"}",secret,"ABCDEFGHJKMN".getBytes(SharingTransport.UTF8));
-  check(SharingTransport.decrypt(cipher,secret).equals("{\"homeId\":\"42\"}"),"AES-GCM round trip");
-  check(hash.equals("81542abb4375f4f3f5779f8c4889cd91"),"Reference MD5");
-  check(secret.equals("a43689fcfc68604f"),"Swift CryptoKit key reference");
-  check(cipher.equals("QUJDREVGR0hKS01OFU1ZSihrcsNcuGsQrbBdtDiy67jIifj11G/ygakQKg=="),"Swift CryptoKit AES-GCM reference");
-  byte[] modified=Base64.getDecoder().decode(cipher);modified[modified.length-1]^=1;boolean rejected=false;try{SharingTransport.decrypt(Base64.getEncoder().encodeToString(modified),secret);}catch(javax.crypto.AEADBadTagException e){rejected=true;}check(rejected,"Reject tampered ciphertext");
-  Set<String> codes=new HashSet<>(Arrays.asList("switch_led","bright_value_v2","temp_value_v2","work_mode"));
-  JSONObject ranges=new JSONObject().put("bright_value_v2",new JSONObject().put("min",10).put("max",1000));
-  JSONArray commands=CloudMapper.lights(new JSONObject().put("on",true).put("brightness",.5),new JSONObject(),new JSONObject(),codes,ranges);
-  check(commands.getJSONObject(0).getString("code").equals("switch_led")&&commands.getJSONObject(0).getBoolean("value"),"Smart bulb power");
-  check(commands.getJSONObject(1).getInt("value")==505,"Brightness specification range");
-  commands=CloudMapper.lights(new JSONObject().put("on",false),new JSONObject(),new JSONObject().put("codes",new JSONObject().put("switch","custom_switch")),codes,ranges);
-  check(commands.getJSONObject(0).getString("code").equals("custom_switch"),"Custom switch code");
-  List<CloudMapper.Key> keys=CloudMapper.keys(new JSONObject().put("on",true).put("target",23).put("mode","cool").put("fan","high"));
-  check(keys.size()==4&&keys.get(0).field.equals("on")&&keys.get(1).field.equals("mode")&&keys.get(2).field.equals("target")&&keys.get(3).field.equals("fan"),"IR command order");
-  check(keys.get(0).command.getString("code").equals("PowerOn")&&keys.get(2).command.getInt("value")==23,"IR values");
-  check(CloudMapper.infrared(new HashSet<>(Arrays.asList("PowerOff"))),"IR detection");
-  JSONArray status=new JSONArray().put(new JSONObject().put("code","temp_current").put("value",215));check(CloudMapper.temperature(status)==21.5,"Temperature sensor scale");
-  JSONObject state=CloudMapper.reading(new JSONArray().put(new JSONObject().put("code","switch_led").put("value",true)).put(new JSONObject().put("code","bright_value_v2").put("value",505)),ranges,false);
-  check(state.getBoolean("on")&&Math.abs(state.getDouble("brightness")-.5)<.0001,"Light state mapping");
-  check(SmartLifeClient.trustedEndpoint("https://apigw.tuyaeu.com"),"EU gateway");
-  check(!SmartLifeClient.trustedEndpoint("http://apigw.tuyaeu.com")&&!SmartLifeClient.trustedEndpoint("https://apigw.tuyaeu.com.evil.example")&&!SmartLifeClient.trustedEndpoint("https://evil.example@apigw.tuyaeu.com"),"Endpoint restriction");
+  boolean rejected;
   JSONObject patch=CloudMapper.patch("acs",new JSONObject().put("target",99).put("mode","heat").put("roomTemp",99),new JSONObject().put("min",16).put("max",30));
   check(patch.getInt("target")==30&&patch.getString("mode").equals("heat")&&!patch.has("roomTemp"),"Scene temperature clamping and writable fields");
   patch=CloudMapper.patch("lights",new JSONObject().put("brightness",-5).put("temp",99999).put("color",JSONObject.NULL),new JSONObject());
@@ -49,7 +22,7 @@ public class StandaloneTests {
   check(lit==1&&demoLights.getJSONObject("main.tv").getBoolean("on"),"Demo Movie only lights the TV strip");
   demoLights=demo.action(new JSONObject().put("kind","scene").put("id","night")).getJSONObject("home").getJSONObject("state").getJSONObject("lights");
   check(demoLights.getJSONObject("main.bed").getBoolean("on")&&demoLights.getJSONObject("main.bed.left").getBoolean("on"),"Demo Night has both bedside lamps");
-  example.getJSONArray("lights").getJSONObject(0).put("tuya",new JSONObject().put("deviceId","never-send"));rejected=false;try{new DemoHome(example);}catch(IllegalArgumentException e){rejected=true;}check(rejected,"Real bindings rejected by demo constructor");
+  example.getJSONArray("lights").getJSONObject(0).put("link",new JSONObject().put("service","hue").put("id","never-send"));rejected=false;try{new DemoHome(example);}catch(IllegalArgumentException e){rejected=true;}check(rejected,"Real bindings rejected by demo constructor");
   localMappings();
   System.out.println(tests+" standalone protocol tests passed.");
  }

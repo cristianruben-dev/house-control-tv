@@ -11,11 +11,10 @@ import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import org.json.JSONObject;
 
-/** A separate TV login or local hub credential, encrypted with a non-exportable Android Keystore key. */
+/** A local hub credential (Home Assistant token, Hue Bridge key), encrypted with a non-exportable Android Keystore key. */
 final class SecureVault implements SecretStore {
     private final AtomicFile file;
-    private final String alias="house-control-tv-smartlife-v1";
-    SecureVault(Context context){this(context,"smartlife.enc");}
+    private final String alias="house-control-tv-smartlife-v1"; // historical name; kept so saved hub credentials stay readable
     SecureVault(Context context,String name){file=new AtomicFile(new File(context.getFilesDir(),name));}
     private javax.crypto.SecretKey key() throws Exception {
         KeyStore store=KeyStore.getInstance("AndroidKeyStore");store.load(null);
