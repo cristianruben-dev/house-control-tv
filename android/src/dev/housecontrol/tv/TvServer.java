@@ -33,9 +33,11 @@ final class TvServer {
         }else{
             if(!method.equals("GET")){reply(s,405,"text/plain",new byte[0]);return;}
             String asset=path.equals("/")||path.equals("/remote")?"index.html":path.substring(1);if(asset.contains("..")||asset.contains("%")||asset.contains("\\")){reply(s,404,"text/plain",new byte[0]);return;}
-            try(InputStream file=context.getAssets().open("web/"+asset)){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] b=new byte[8192];int n;while((n=file.read(b))!=-1)bytes.write(b,0,n);String mime=asset.endsWith(".js")?"application/javascript":asset.endsWith(".css")?"text/css":asset.endsWith(".json")?"application/json":"text/html";reply(s,200,mime,bytes.toByteArray());}catch(FileNotFoundException e){reply(s,404,"text/plain",new byte[0]);}
+            try(InputStream file=context.getAssets().open("web/"+asset)){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] b=new byte[8192];int n;while((n=file.read(b))!=-1)bytes.write(b,0,n);String mime=mime(asset);reply(s,200,mime,bytes.toByteArray());}catch(FileNotFoundException e){reply(s,404,"text/plain",new byte[0]);}
         }
     }catch(Exception ignored){}}
+    /** Content type of a bundled web file, by extension. */
+    static String mime(String path){return path.endsWith(".js")?"application/javascript":path.endsWith(".css")?"text/css":path.endsWith(".json")?"application/json":path.endsWith(".png")?"image/png":path.endsWith(".jpg")||path.endsWith(".jpeg")?"image/jpeg":path.endsWith(".ttf")?"font/ttf":path.endsWith(".svg")?"image/svg+xml":"text/html";}
     static void json(Socket s,int status,JSONObject object)throws Exception{reply(s,status,"application/json",object.toString().getBytes(SharingTransport.UTF8));}
     static void reply(Socket s,int status,String type,byte[] body)throws Exception{OutputStream out=s.getOutputStream();out.write(("HTTP/1.1 "+status+" Response\r\nContent-Type: "+type+"; charset=utf-8\r\nContent-Length: "+body.length+"\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n\r\n").getBytes(SharingTransport.UTF8));out.write(body);out.flush();}
     void close(){closed=true;try{server.close();}catch(Exception ignored){}clients.shutdownNow();}

@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
                 if (!"housecontrol.local".equals(uri.getHost()) || !"https".equals(uri.getScheme())) return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", java.util.Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
                 String path = uri.getPath(); if (path == null || path.equals("/")) path = "/index.html";
                 if (path.contains("..")) return null;
-                String mime = path.endsWith(".js") ? "application/javascript" : path.endsWith(".css") ? "text/css" : path.endsWith(".json") ? "application/json" : path.endsWith(".png") ? "image/png" : "text/html";
+                String mime = TvServer.mime(path);
                 try { return new WebResourceResponse(mime, "utf-8", getAssets().open("web" + path)); }
                 catch (IOException e) { return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", java.util.Collections.emptyMap(), new ByteArrayInputStream(new byte[0])); }
             }
