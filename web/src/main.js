@@ -261,51 +261,67 @@ function navigate(key){
   const all=focusables(),current=document.activeElement;
   const focus=(n)=>{if(n){n.focus({preventScroll:true});n.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});}return true;};
   const selectedRoom=()=>document.querySelector('[data-room="'+room+'"]');
-  const deviceFilter=()=>document.querySelector('[data-kind="'+deviceKind+'"]');
+  // No device filters any more: "the top of the device panel" is the Lights off button.
+  const deviceFilter=()=>$('#all-off');
   const firstDevice=()=>$('#device-list')?.querySelector('button:not(:disabled)');
   const scene=()=>[...sceneNodes.values()].find(b=>b.classList.contains('active')) || [...sceneNodes.values()][0];
+  const firstScene=()=>[...sceneNodes.values()].find(b=>!b.disabled);
+  const tiles=()=>[...($('#device-list')?.querySelectorAll('button:not(:disabled)')||[])];
   if(!modal && current?.matches('[data-room]')){
     const tabs=[...document.querySelectorAll('[data-room]')],i=tabs.indexOf(current);
-    if(key==='ArrowDown')return focus(deviceFilter());
+    if(key==='ArrowDown')return focus(firstScene()||deviceFilter());
     if(key==='ArrowUp')return focus($('.sync-button'));
     if(key==='ArrowLeft')return focus(tabs[Math.max(0,i-1)]);
-    if(key==='ArrowRight')return focus(tabs[i+1]||deviceFilter());
+    if(key==='ArrowRight')return focus(tabs[i+1]||current);
   }
-  if(current?.matches('.sync-button')&&key==='ArrowDown')return focus(selectedRoom());
-  if(current?.matches('[data-kind]')){
-    if(key==='ArrowUp')return focus(selectedRoom());
-    if(key==='ArrowDown')return focus(deviceKind==='lights'?$('#all-off'):firstDevice()||scene());
-    const filters=[...document.querySelectorAll('[data-kind]')],i=filters.indexOf(current);
-    if(key==='ArrowLeft')return focus(filters[i-1]||$('#orbit'));
-    if(key==='ArrowRight')return focus(filters[i+1]||current);
-  }
+  if(!modal && current?.matches('.sync-button'))return key==='ArrowDown'?focus(selectedRoom()):true;
   if(current?.matches('#all-off')){
-    if(key==='ArrowUp')return focus(deviceFilter());
-    if(key==='ArrowDown')return focus(firstDevice()||scene());
-    if(key==='ArrowLeft')return focus($('#orbit'));
-  }
-  if(current?.matches('.light-row')){
-    const rows=[...$('#device-list').querySelectorAll('button:not(:disabled)')],i=rows.indexOf(current);
-    if(key==='ArrowDown')return focus(rows[i+1]||scene());
-    if(key==='ArrowUp')return focus(rows[i-1]||$('#all-off'));
-    if(key==='ArrowLeft')return focus($('#orbit'));
-  }
-  if(current?.matches('.scene-button')){
-    const scenes=[...sceneNodes.values()].filter(b=>!b.disabled),i=scenes.indexOf(current);
-    if(key==='ArrowUp')return focus(deviceFilter());
-    if(key==='ArrowLeft')return focus(scenes[Math.max(0,i-1)]);
-    if(key==='ArrowRight')return focus(scenes[Math.min(scenes.length-1,i+1)]);
-  }
-  if(current?.matches('#orbit')){
     if(key==='ArrowUp')return focus(selectedRoom());
-    if(key==='ArrowDown')return focus(scene());
-    if(key==='ArrowRight')return focus(firstDevice()||deviceFilter());
+    if(key==='ArrowDown')return focus(firstDevice()||current);
+    if(key==='ArrowLeft')return focus(scene()||current);
+    if(key==='ArrowRight')return true;
   }
-if(!all.includes(current)){all[0]?.focus();return;}
-  const a=current.getBoundingClientRect(),ax=a.x+a.width/2,ay=a.y+a.height/2;
-  let best=null,score=Infinity;
-  for(const b of all){if(b===current)continue;const r=b.getBoundingClientRect();const dx=r.x+r.width/2-ax,dy=r.y+r.height/2-ay;const horizontal=key==='ArrowLeft'||key==='ArrowRight';const forward=(key==='ArrowRight'?dx:key==='ArrowLeft'?-dx:key==='ArrowDown'?dy:-dy);if(forward<3)continue;const cross=Math.abs(horizontal?dy:dx);const cost=forward+cross*2.8+(cross> (horizontal?a.height:a.width)*.75?80:0);if(cost<score){score=cost;best=b;}}
+  // Lights sit in per-room sections: move by position, left and right only within the same row; past the
+  // edges go to Lights off or the scenes.
+  if(current?.matches('.light-row')){
+    const next=nearest(current,tiles(),key,key==='ArrowLeft'||key==='ArrowRight');
+    if(next)return focus(next);
+    if(key==='ArrowUp')return focus($('#all-off'));
+    if(key==='ArrowLeft')return focus(nearest(current,[...sceneNodes.values()].filter(b=>!b.disabled),key)||scene()||current);
+    return true;
+  }
+  // Scenes: columns of four, filled top to bottom. Up from the top goes to the room tabs; right from the last
+  // column to the lights.
+  if(current?.matches('.scene-button')){
+    const scenes=[...sceneNodes.values()].filter(b=>!b.disabled),i=scenes.indexOf(current),row=i%4;
+    if(key==='ArrowUp')return focus(row>0?scenes[i-1]:selectedRoom());
+    if(key==='ArrowDown')return focus(row<3&&scenes[i+1]?scenes[i+1]:current);
+    if(key==='ArrowLeft')return focus(scenes[i-4]||current);
+    if(key==='ArrowRight')return focus(scenes[i+4]||nearest(current,tiles(),key)||$('#all-off'));
+  }
+  if(!all.includes(current)){focus(modal?all[0]:scene()||all[0]);return;}
+  // In dialogs, left and right stay on the same row: off its end, focus stays put.
+  const best=nearest(current,all,key,!!modal&&(key==='ArrowLeft'||key==='ArrowRight'));
   if(best){best.focus({preventScroll:true});best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});}
+}
+/**
+ * The control in {@code list} nearest to {@code current} in the arrow's direction, or null. Controls that
+ * line up with it (overlap across the arrow) win over ones off to the side; {@code strict} allows only those.
+ */
+function nearest(current,list,key,strict){
+  const a=current.getBoundingClientRect(),ax=a.x+a.width/2,ay=a.y+a.height/2,horizontal=key==='ArrowLeft'||key==='ArrowRight';
+  let best=null,score=Infinity;
+  for(const b of list){
+    if(b===current)continue;
+    const r=b.getBoundingClientRect(),dx=r.x+r.width/2-ax,dy=r.y+r.height/2-ay;
+    const forward=key==='ArrowRight'?dx:key==='ArrowLeft'?-dx:key==='ArrowDown'?dy:-dy;
+    if(forward<3)continue;
+    const gap=horizontal?Math.max(0,Math.max(a.top,r.top)-Math.min(a.bottom,r.bottom)):Math.max(0,Math.max(a.left,r.left)-Math.min(a.right,r.right));
+    if(strict&&gap>0)continue;
+    const cost=forward+gap*2.8+(gap>0?80:0)+Math.abs(horizontal?dy:dx)*.3;
+    if(cost<score){score=cost;best=b;}
+  }
+  return best;
 }
 function back(){
   // The remote's Back leaves a dialog's inner page first (the hubs page goes back to Sync & connect).
