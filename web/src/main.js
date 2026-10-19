@@ -59,8 +59,6 @@ function roomName(id) { return config.rooms.find(r => r.id === id)?.name || ''; 
 function selectRoom(id) {
   room = id; world?.focus(id === 'all' ? null : { kind: 'room', id });
   for (const b of document.querySelectorAll('[data-room]')) { const selected = b.dataset.room === id; b.classList.toggle('selected', selected); b.setAttribute('aria-pressed', selected); }
-  $('#room-title').textContent = id === 'all' ? 'Whole home' : roomName(id);
-  $('#view-label').textContent = id === 'all' ? 'Your home. At a glance.' : 'A closer look at your room.';
   renderDevices(); update();
 }
 function renderDevices() {
@@ -131,20 +129,16 @@ function sceneIcon(s) { return ({ sun:'Sun', sofa:'Sofa', film:'Film', moon:'Moo
 function render() {
   app.replaceChildren(); sceneNodes.clear();
   const header = el('header');
-  const brand = el('div','brand'); const logo = el('span','logo'); logo.append(icon('House',28));
-  const brandText = el('div'); brandText.append(el('strong','','House Control')); brand.append(logo,brandText);
   const connection = el('div','connection'); const status = el('span'); status.id='status';
   const clock = el('time'); clock.id='clock';
   connection.append(status, clock, button('Sync & connect', 'Smartphone', openSync, 'sync-button'));
-  header.append(brand, connection);
+  header.append(connection);
   const tabs = el('nav','rooms'); tabs.setAttribute('aria-label','Rooms');
   for (const r of [{id:'all',name:'Whole home'}, ...config.rooms]) {
     const b = button(r.name, r.id==='all'?'House':null,()=>selectRoom(r.id),'room-tab'); b.dataset.room=r.id; b.classList.toggle('selected',r.id===room); b.setAttribute('aria-pressed',r.id===room); tabs.append(b);
   }
   const layout = el('main','layout');
   const stage = el('section','stage');
-  const caption = el('div','stage-caption'); const subtitle = el('p','','Your home. At a glance.'); subtitle.id='view-label';
-  const title = el('h1','','Whole home'); title.id='room-title'; caption.append(subtitle,title);
   const homeName = el('div','home-name',config.name);
   const canvas = el('canvas'); canvas.id='world'; canvas.setAttribute('aria-label','Interactive 3D home model');
   const stats = el('div','stats');
@@ -152,8 +146,7 @@ function render() {
   const acStat=el('div'); const ac=el('strong'); ac.id='climate-on'; acStat.append(icon('Snowflake'),ac,el('small','','Climate'));
   const sceneStat=el('div'); const sc=el('strong'); sc.id='active-scene'; sceneStat.append(icon('Sofa'),sc,el('small','','Current scene'));
   stats.append(lightStat,acStat,sceneStat);
-  const orbit = button('Explore in 3D','Rotate3d',()=>{orbiting=!orbiting; orbit.classList.toggle('active',orbiting); toast(orbiting?'Arrow keys rotate the model · OK or Back to finish':'Remote navigation');},'orbit-button'); orbit.id='orbit';
-  stage.append(canvas,caption,homeName,stats,orbit);
+  stage.append(canvas,homeName,stats);
   const aside = el('aside','controls'); const heading=el('div','controls-heading'); const count=el('span');count.id='device-count';heading.append(el('h2','','Devices'),count);
   const off=button('Lights off','Power',()=>command({kind:room==='all'?'allLights':'room',...(room==='all'?{}:{id:room}),on:false}),'all-off'); off.id='all-off';
   const filters=el('div','device-filters');
