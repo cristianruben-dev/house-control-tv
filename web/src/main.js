@@ -1,15 +1,14 @@
 import './style.css';
-import { createElement, House, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, Info, HandHeart } from 'lucide';
+import { createElement, House, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw } from 'lucide';
 import QRCode from 'qrcode';
 import { normalize } from './vendor/config.js';
 import { createWorld } from './vendor/three/world.js';
 import { api, nativeConfig, remoteURL } from './api.js';
-import { ABOUT, DONATIONS, SUPPORT_INTRO } from './support.js';
 
 const app = document.querySelector('#app');
 const $ = (s) => document.querySelector(s);
 function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
-const icons = { House, Settings2, Lightbulb, Power, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, Minus, Plus, ChevronLeft, ChevronRight, Info, HandHeart };
+const icons = { House, Settings2, Lightbulb, Power, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, Minus, Plus, ChevronLeft, ChevronRight };
 function icon(name, size = 24) { return createElement(icons[name] || House, { width: size, height: size, 'stroke-width': 1.65 }); }
 function button(label, name, action, cls = '') {
   const b = el('button', cls); b.type = 'button'; b.setAttribute('aria-label', label);
@@ -184,31 +183,9 @@ function tickClock(){if($('#clock'))$('#clock').textContent=new Date().toLocaleT
 setInterval(tickClock,15000);
 let modalCleanup = null;
 function closeModal(){modalCleanup?.();modalCleanup=null;modal?.remove();modal=null;lastFocus?.focus();}
-function infoButtons(){return [button('About','Info',()=>openInfo('about'),'secondary'),button('Support the author','HandHeart',()=>openInfo('support'),'secondary')];}
-// The TV's WebView only shows bundled pages, so links are text (and a QR) there; the phone companion gets real links.
-function link(url){const text=url.replace(/^https:\/\//,'');if(nativeConfig)return el('span','about-link',text);const a=el('a','about-link',text);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;}
-function qr(value,size){const c=el('canvas','info-qr');c.setAttribute('aria-hidden','true');QRCode.toCanvas(c,value,{width:size,margin:2,errorCorrectionLevel:'M',color:{dark:'#0a0e1a',light:'#ffffff'}}).catch(()=>c.remove());return c;}
-function openInfo(kind){
-  const from=lastFocus;if(modal)closeModal();lastFocus=from;
-  modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label',kind==='about'?'About':'Support the author');
-  const panel=el('section','sync-panel info-panel'+(kind==='support'?' wide':''));const back=button('Back','ArrowLeft',()=>{closeModal();openSync();},'back-button');panel.append(back);
-  if(kind==='about'){
-    const version=bundle?.appVersion||nativeConfig?.version||'';
-    panel.append(el('h2','',ABOUT.app),el('p','sync-description',(version?'Version '+version+' · ':'')+'Made by '+ABOUT.author));
-    const links=el('ul','about-links');for(const l of ABOUT.links){const li=el('li');li.append(el('span','',l.label),link(l.url));links.append(li);}
-    const source=el('div','sync-content');const text=el('div');text.append(el('h3','','Source code'),link(ABOUT.source),el('p','sync-note','Scan to open the project on your phone.'));source.append(qr(ABOUT.source,220),text);
-    panel.append(links,source);
-  }else{
-    panel.append(el('h2','','Support the author'),el('p','sync-description',SUPPORT_INTRO));
-    const grid=el('div','donations');
-    for(const d of DONATIONS){const card=el('section','donation');card.tabIndex=0;card.setAttribute('aria-label',`${d.title}: ${d.network}. Address ${d.address}`);card.append(el('h3','',d.title),el('p','donation-network',d.network),qr(d.address,240),el('code','donation-address',d.address));grid.append(card);}
-    panel.append(grid);
-  }
-  modal.append(panel);document.body.append(modal);back.focus();
-}
 async function openSync(){
   if(bundle?.mode==='demo'){
-    lastFocus=document.activeElement;modal=el('div','modal-backdrop');const panel=el('section','sync-panel');panel.append(el('p','eyebrow','ISOLATED DEMO'),el('h2','','A home you can safely explore'),el('p','sync-description','This demo has no real-device bindings. All switches and scenes affect the demo model only.'),button('Back to demo','ArrowLeft',closeModal,'primary'),button('Reset demo','RefreshCw',()=>switchDemo(true),'secondary'),button('Return to my home','House',()=>switchDemo(false),'secondary'),...infoButtons());modal.append(panel);document.body.append(modal);panel.querySelector('button').focus();return;
+    lastFocus=document.activeElement;modal=el('div','modal-backdrop');const panel=el('section','sync-panel');panel.append(el('p','eyebrow','ISOLATED DEMO'),el('h2','','A home you can safely explore'),el('p','sync-description','This demo has no real-device bindings. All switches and scenes affect the demo model only.'),button('Back to demo','ArrowLeft',closeModal,'primary'),button('Reset demo','RefreshCw',()=>switchDemo(true),'secondary'),button('Return to my home','House',()=>switchDemo(false),'secondary'));modal.append(panel);document.body.append(modal);panel.querySelector('button').focus();return;
   }
   if (nativeConfig?.mode === 'standalone' || bundle?.mode === 'standalone') return openStandaloneSync();
   lastFocus=document.activeElement;modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Sync & connect');

@@ -11,8 +11,7 @@
 
 <p align="center">
   <a href="#install"><b>Install</b></a> &nbsp;·&nbsp;
-  <a href="#connect-your-devices"><b>Connect your devices</b></a> &nbsp;·&nbsp;
-  <a href="#support-the-project"><b>Support the project</b></a>
+  <a href="#connect-your-devices"><b>Connect your devices</b></a>
 </p>
 
 <p align="center">
@@ -40,8 +39,6 @@
 <p align="center">
   <img src="docs/tv-climate.jpg" width="49%" alt="An air conditioner card: power and target temperature">
   <img src="docs/tv-services.jpg" width="49%" alt="Sync & connect: Home Assistant connected, a Hue Bridge ready to pair">
-  <img src="docs/tv-sync.jpg" width="49%" alt="Sync & connect: Smart Life connected, the private QR code for the phone">
-  <img src="docs/tv-support.jpg" width="49%" alt="Support the author: four QR codes for tips in crypto">
   <br><sub>Screenshots use the bundled demo home.</sub>
 </p>
 
@@ -162,96 +159,12 @@ building. Luma never receives a password, token or the phone key.
 Runs the Java tests (plan patches, the demo home, Home Assistant and Hue mappings and validation), then the real Home Assistant and Hue clients against [`tools/mock_hubs.py`](tools/mock_hubs.py)
 on loopback (pairing, reads, commands, live updates, certificate pinning), then the Mac sync tests.
 `python3 tools/mock_hubs.py --host 0.0.0.0 --auto` runs the pretend Home Assistant (port 18123, prints its token)
-and Hue Bridge (port 18443) for trying the TV without hardware. The author, links and tip addresses shown in *Sync & connect → About* and
-*Support the author* come from [`web/src/support.js`](web/src/support.js).
+and Hue Bridge (port 18443) for trying the TV without hardware.
 
 The interface is the web app in `web/` (Vite, Three.js), shown full screen by a small native Android app in
 `android/` that stores the home, talks to the devices and serves the phone companion. The 3D renderer and plan
 format come from [House Control](https://github.com/0xProbabillity/house-control) (revision in
 `UPSTREAM-REVISION`, license in `UPSTREAM-LICENSE`).
-
-## Support the project
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/support/banner-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/support/banner-light.svg">
-  <img src="docs/support/banner-light.svg" width="100%" alt="Support House Control">
-</picture>
-
-House Control is free and has no ads. If it earned a place on your TV, a tip in crypto
-helps it keep growing: more devices, more platforms, quicker fixes. Thank you! A star, a bug report or a
-pull request helps just as much.
-
-Scan a code with your wallet, or copy an address with the button in the corner of its box.
-
-> [!IMPORTANT]
-> Send each coin only over the network named next to its address. Coins sent over another network may be lost.
-
-<table>
-  <tr>
-    <td align="center" width="196">
-      <img src="docs/support/qr-bitcoin.svg" width="168" alt="QR code of the Bitcoin address">
-    </td>
-    <td>
-      <img src="docs/support/bitcoin.svg" width="28" height="28" align="absmiddle" alt="">&nbsp;
-      <b>Bitcoin</b>
-      <br><sub>BTC · native SegWit (bech32) address</sub>
-
-```text
-bc1q07hfz95crdalcrnywjavdpc4pdvllct83as5re
-```
-
-</td>
-  </tr>
-  <tr>
-    <td align="center" width="196">
-      <img src="docs/support/qr-evm.svg" width="168" alt="QR code of the Ethereum, Base, BNB Chain and Arbitrum address">
-    </td>
-    <td>
-      <img src="docs/support/ethereum.svg" width="28" height="28" align="absmiddle" alt="">
-      <img src="docs/support/base.svg" width="28" height="28" align="absmiddle" alt="">
-      <img src="docs/support/bnb.svg" width="28" height="28" align="absmiddle" alt="">
-      <img src="docs/support/arbitrum.svg" width="28" height="28" align="absmiddle" alt="">&nbsp;
-      <b>Ethereum · Base · BNB Chain · Arbitrum</b>
-      <br><sub>One address on all four networks · ETH, BNB, USDT, USDC and other tokens</sub>
-
-```text
-0x4ed3aF428e938a0CC8e60df86D714B4a7F0928F0
-```
-
-</td>
-  </tr>
-  <tr>
-    <td align="center" width="196">
-      <img src="docs/support/qr-ton.svg" width="168" alt="QR code of the TON address">
-    </td>
-    <td>
-      <img src="docs/support/ton.svg" width="28" height="28" align="absmiddle" alt="">&nbsp;
-      <b>TON</b>
-      <br><sub>Toncoin and USDT on TON · no memo needed</sub>
-
-```text
-UQBCDKDp11tBIwTon4ItzTPcQgNGcaqTM6Gn31KwSN7qWdmM
-```
-
-</td>
-  </tr>
-  <tr>
-    <td align="center" width="196">
-      <img src="docs/support/qr-tron.svg" width="168" alt="QR code of the TRON address">
-    </td>
-    <td>
-      <img src="docs/support/tron.svg" width="28" height="28" align="absmiddle" alt="">&nbsp;
-      <b>TRON</b>
-      <br><sub>TRX and USDT (TRC-20)</sub>
-
-```text
-TWtWLJp2Hc6242RynhU1B4Uujru3tppb3B
-```
-
-</td>
-  </tr>
-</table>
 
 ## Acknowledgements and disclaimer
 
