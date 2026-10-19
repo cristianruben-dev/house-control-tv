@@ -7,9 +7,11 @@ import android.os.*;
 import org.json.*;
 import java.security.MessageDigest;
 
-/** Bound by Luma while the launcher is visible. Keeps TV-owned control alive without the Mac. */
+/** Bound by the home-screen launcher (tv-vibehack, or Luma) while it is visible. Keeps TV-owned control alive without the Mac. */
 public final class HomeService extends Service {
     static final String ACTIVITY_BIND="dev.housecontrol.tv.ACTIVITY_BIND";
+    /** Launchers that may show this home, each also pinned to a signing certificate in Trust.LUMA. */
+    static final java.util.List<String> LAUNCHERS=java.util.Arrays.asList("com.gathin.tvhome","dev.luma.tv");
     static HomeEngine sharedEngine;static TvServer sharedServer;
     static synchronized void initialize(Context c)throws Exception{
         if(sharedEngine==null)sharedEngine=new HomeEngine(c);
@@ -18,7 +20,7 @@ public final class HomeService extends Service {
     static synchronized void replaceServer(Context c,String key)throws Exception{if(sharedServer!=null)sharedServer.close();sharedServer=new TvServer(c.getApplicationContext(),sharedEngine,key);}
     private boolean trusted(int uid){
         if(uid==android.os.Process.myUid())return true;
-        try{String[] packages=getPackageManager().getPackagesForUid(uid);if(packages==null)return false;for(String name:packages)if(name.equals("dev.luma.tv")){
+        try{String[] packages=getPackageManager().getPackagesForUid(uid);if(packages==null)return false;for(String name:packages)if(LAUNCHERS.contains(name)){
             PackageInfo p=getPackageManager().getPackageInfo(name,PackageManager.GET_SIGNING_CERTIFICATES);
             for(Signature signature:p.signingInfo.getApkContentsSigners())if(java.util.Arrays.asList(Trust.LUMA).contains(SharingTransport.hex(MessageDigest.getInstance("SHA-256").digest(signature.toByteArray()))))return true;
         }}catch(Exception ignored){}return false;
@@ -26,7 +28,7 @@ public final class HomeService extends Service {
     @Override public void onCreate(){super.onCreate();try{initialize(this);}catch(Exception ignored){}}
     @Override public IBinder onBind(Intent intent){if(sharedEngine!=null&&!ACTIVITY_BIND.equals(intent.getAction()))sharedEngine.setWidgetActive(true);return new Binder(){
         @Override protected boolean onTransact(int code,Parcel data,Parcel reply,int flags)throws RemoteException{
-            if(!trusted(Binder.getCallingUid())){reply.writeException(new SecurityException("Only the paired Luma launcher may access this home."));return true;}
+            if(!trusted(Binder.getCallingUid())){reply.writeException(new SecurityException("Only a paired launcher may access this home."));return true;}
             JSONObject result;
             try{
                 if(sharedEngine==null)throw new IllegalStateException("Open House Control to finish TV setup.");
