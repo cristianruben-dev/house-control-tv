@@ -148,7 +148,6 @@ building. Luma never receives a password, token or the phone key.
   Assistant or the Hue app.
 - Air conditioners on the TV: power and target temperature. Modes, fan speeds and the plan itself are edited in
   House Control on the Mac or iPhone.
-- An infrared AC's power state is an estimate: its own handheld remote cannot report back.
 
 ## Development
 

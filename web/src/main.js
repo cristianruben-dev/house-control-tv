@@ -63,38 +63,29 @@ function selectRoom(id) {
 }
 function renderDevices() {
   const list = $('#device-list'); list.replaceChildren(); lightNodes.clear(); acNodes.clear();
-  const lights = config.lights.filter(d => deviceKind === 'lights' && (room === 'all' || d.room === room));
-  const acs = config.acs.filter(d => deviceKind === 'acs' && (room === 'all' || d.room === room));
-  for (const b of document.querySelectorAll('[data-kind]')) { b.classList.toggle('selected', b.dataset.kind === deviceKind); b.setAttribute('aria-pressed', b.dataset.kind === deviceKind); }
-  $('#device-count').textContent = String(lights.length + acs.length);
-  $('#all-off').hidden = deviceKind !== 'lights';
-  if (!lights.length && !acs.length) list.append(el('p', 'empty', 'No devices in this category. Try another room or add devices in House Control.'));
-  for (const d of acs) {
-    const card = el('section', 'climate-card');
-    const top = el('div', 'climate-top');
-    const title = el('div', 'device-title'); title.append(el('span', 'device-room', roomName(d.room)), el('h3', '', d.name));
-    const power = button('Air conditioner power', 'Power', () => command({ kind: 'acPower', id: d.id, on: !store.state.acs[d.id].on }), 'power icon-button');
-    top.append(title, power);
-    const dial = el('div', 'climate-dial');
-    const minus = button('Lower temperature', 'Minus', () => { const n = store.state.acs[d.id].target; if (n > d.min) command({ kind: 'acTarget', id: d.id, target: n - 1 }); }, 'step icon-button');
-    const target = el('div', 'temperature');
-    const plus = button('Raise temperature', 'Plus', () => { const n = store.state.acs[d.id].target; if (n < d.max) command({ kind: 'acTarget', id: d.id, target: n + 1 }); }, 'step icon-button');
-    dial.append(minus, target, plus);
-    const info = el('div', 'climate-info'); const mode = el('span'); const current = el('span'); info.append(mode, current);
-    card.append(top, dial, info); list.append(card); acNodes.set(d.id, { card, power, target, mode, current, minus, plus });
+  // This TV only switches lights (no climate), grouped in one section per room, in the plan's room order.
+  const lights = config.lights.filter(d => room === 'all' || d.room === room);
+  $('#device-count').textContent = String(lights.length);
+  if (!lights.length) list.append(el('p', 'empty', 'No lights in this room.'));
+  for (const r of config.rooms) {
+    const inRoom = lights.filter(d => d.room === r.id);
+    if (!inRoom.length) continue;
+    const section = el('section', 'device-section'); const grid = el('div', 'light-grid');
+    section.append(el('h3', '', r.name), grid); list.append(section);
+    for (const d of inRoom) grid.append(lightTile(d));
   }
-
-  for (const d of lights) {
-    const b = el('button', 'light-row'); b.type = 'button';
-    const lamp = el('span', 'light-icon'); lamp.append(icon('Lightbulb'));
-    const title = el('span', 'light-title'); const name = el('strong', '', d.name); const detail = el('small'); title.append(name, detail);
-    const toggle = el('span', 'toggle'); toggle.append(el('i'));
-    b.append(lamp, title, toggle); b.onclick = () => command({ kind: 'light', id: d.id, on: !store.state.lights[d.id].on });
-    // On small TV chips the 3D lamp highlight would redraw the model on every move; keep focus instant there.
-    b.onfocus = () => { const u = world?.lights.get(d.id); if (u && RES === 1) { u.hoverGoal = 1; world.setRunning(true); } };
-    b.onblur = () => { const u = world?.lights.get(d.id); if (u && RES === 1) { u.hoverGoal = 0; world.setRunning(true); } };
-    list.append(b); lightNodes.set(d.id, { b, detail, lamp });
-  }
+}
+/** A light as a tile in its room's 3-column grid: the lit tile shows the state, so no On/Off text or switch. */
+function lightTile(d) {
+  const b = el('button', 'light-row'); b.type = 'button';
+  const lamp = el('span', 'light-icon'); lamp.append(icon('Lightbulb'));
+  const title = el('span', 'light-title'); title.append(el('strong', '', d.name));
+  b.append(lamp, title); b.onclick = () => command({ kind: 'light', id: d.id, on: !store.state.lights[d.id].on });
+  // On small TV chips the 3D lamp highlight would redraw the model on every move; keep focus instant there.
+  b.onfocus = () => { const u = world?.lights.get(d.id); if (u && RES === 1) { u.hoverGoal = 1; world.setRunning(true); } };
+  b.onblur = () => { const u = world?.lights.get(d.id); if (u && RES === 1) { u.hoverGoal = 0; world.setRunning(true); } };
+  lightNodes.set(d.id, { b, lamp });
+  return b;
 }
 function update() {
   if (!config || !$('#status')) return;
@@ -103,14 +94,11 @@ function update() {
   $('#status').classList.toggle('offline', !online && !demo);
   $('#lights-on').textContent = on;
   $('#lights-total').textContent = 'of ' + config.lights.length + ' on';
-  const acOn = Object.values(store.state.acs).filter(s => s.on).length;
-  $('#climate-on').textContent = acOn ? acOn + ' running' : 'Off';
   $('#active-scene').textContent = config.scenes.find(s => s.id === store.state.scene)?.name || 'Manual control';
   for (const [id, n] of lightNodes) {
     const s = store.state.lights[id]; if (!s) continue;
     n.b.classList.toggle('on', s.on); n.b.setAttribute('aria-pressed', String(s.on));
     n.b.setAttribute('aria-label', `${config.lights.find(d=>d.id===id).name}, ${s.on ? 'on' : 'off'}`);
-    n.detail.textContent = (room === 'all' ? roomName(config.lights.find(d=>d.id===id).room) + ' · ' : '') + (s.on ? 'On' : 'Off');
     n.b.disabled = !available();
   }
   for (const [id, n] of acNodes) {
@@ -143,29 +131,25 @@ function render() {
   const canvas = el('canvas'); canvas.id='world'; canvas.setAttribute('aria-label','Interactive 3D home model');
   const stats = el('div','stats');
   const lightStat=el('div'); const on=el('strong'); on.id='lights-on'; const total=el('small'); total.id='lights-total'; lightStat.append(icon('Lightbulb'),on,total);
-  const acStat=el('div'); const ac=el('strong'); ac.id='climate-on'; acStat.append(icon('Snowflake'),ac,el('small','','Climate'));
   const sceneStat=el('div'); const sc=el('strong'); sc.id='active-scene'; sceneStat.append(icon('Sofa'),sc,el('small','','Current scene'));
-  stats.append(lightStat,acStat,sceneStat);
+  stats.append(lightStat,sceneStat);
   stage.append(canvas,homeName,stats);
   const aside = el('aside','controls'); const heading=el('div','controls-heading'); const count=el('span');count.id='device-count';heading.append(el('h2','','Devices'),count);
   const off=button('Lights off','Power',()=>command({kind:room==='all'?'allLights':'room',...(room==='all'?{}:{id:room}),on:false}),'all-off'); off.id='all-off';
-  const filters=el('div','device-filters');
-  for (const [kind,label,name] of [['lights','Lighting','Lightbulb'],['acs','Climate','Snowflake']]) {
-    const b=button(label,name,()=>{deviceKind=kind;renderDevices();update();},'device-filter'); b.dataset.kind=kind; filters.append(b);
-  }
-  const list=el('div','device-list'); list.id='device-list'; aside.append(heading,filters,off,list);
-  layout.append(stage,aside);
-  const scenes=el('section','scenes'); const sceneTitle=el('div','scene-heading');sceneTitle.append(el('h2','','Scenes'));
+  const list=el('div','device-list'); list.id='device-list'; aside.append(heading,off,list);
+  // Scenes: their own card between the model and the lights, in columns of four (up to two columns).
+  const scenes=el('section','scenes'); const sceneHeading=el('div','controls-heading'); const sceneCount=el('span',''); sceneCount.textContent=String(Math.min(8,config.scenes.length));
+  sceneHeading.append(el('h2','','Scenes'),sceneCount);
   const sceneList=el('div','scene-list');
-  for (const s of config.scenes) { const b=button(s.name,sceneIcon(s),()=>command({kind:'scene',id:s.id}),'scene-button'); sceneList.append(b);sceneNodes.set(s.id,b); }
+  for (const s of config.scenes.slice(0,8)) { const b=button(s.name,sceneIcon(s),()=>command({kind:'scene',id:s.id}),'scene-button'); sceneList.append(b);sceneNodes.set(s.id,b); }
   if (!config.scenes.length) sceneList.append(el('p','empty','Add scenes in House Control on your Mac.'));
-  scenes.append(sceneTitle,sceneList);
-  const footer=el('footer');footer.append(el('span','','OK  Select'),el('span','','Back  Whole home'));
+  scenes.append(sceneHeading,sceneList);
+  layout.append(stage,scenes,aside);
   const toastNode=el('div','toast');toastNode.id='toast';toastNode.setAttribute('role','status');
-  app.append(header,tabs,layout,scenes,footer,toastNode);
+  app.append(header,tabs,layout,toastNode);
   renderDevices(); update(); tickClock();
   try {
-    world=createWorld(canvas,config,store,{resolution:()=>RES,onHover(){},onPick(t){if(!t)return;if(t.kind==='room')selectRoom(t.id);if(t.kind==='light')command({kind:'light',id:t.id,on:!store.state.lights[t.id].on});if(t.kind==='ac'){const d=config.acs.find(d=>d.id===t.id);deviceKind='acs';selectRoom(d.room);acNodes.get(t.id)?.power.focus();}}});
+    world=createWorld(canvas,config,store,{resolution:()=>RES,onHover(){},onPick(t){if(!t)return;if(t.kind==='room')selectRoom(t.id);if(t.kind==='light')command({kind:'light',id:t.id,on:!store.state.lights[t.id].on});}});
     world.setInsets(24,38);world.setRunning(true);world.intro();
     setTimeout(()=>console.info('TV_RENDER_STATS',JSON.stringify(world?.stats())),6000);
     resizeObserver?.disconnect(); resizeObserver=new ResizeObserver(()=>world?.resize()); resizeObserver.observe(canvas);
