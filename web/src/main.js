@@ -1,3 +1,4 @@
+import './polyfills.js';
 import './style.css';
 import { createElement, House, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw } from 'lucide';
 import QRCode from 'qrcode';
