@@ -1,5 +1,6 @@
 import './polyfills.js';
 import './style.css';
+import './theme.css';
 import { createElement, House, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw } from 'lucide';
 import QRCode from 'qrcode';
 import { normalize } from './vendor/config.js';
@@ -149,7 +150,7 @@ function render() {
   app.append(header,tabs,layout,toastNode);
   renderDevices(); update(); tickClock();
   try {
-    world=createWorld(canvas,config,store,{resolution:()=>RES,onHover(){},onPick(t){if(!t)return;if(t.kind==='room')selectRoom(t.id);if(t.kind==='light')command({kind:'light',id:t.id,on:!store.state.lights[t.id].on});}});
+    world=createWorld(canvas,config,store,{background:'transparent',resolution:()=>RES,onHover(){},onPick(t){if(!t)return;if(t.kind==='room')selectRoom(t.id);if(t.kind==='light')command({kind:'light',id:t.id,on:!store.state.lights[t.id].on});}});
     world.setInsets(24,38);world.setRunning(true);world.intro();
     setTimeout(()=>console.info('TV_RENDER_STATS',JSON.stringify(world?.stats())),6000);
     resizeObserver?.disconnect(); resizeObserver=new ResizeObserver(()=>world?.resize()); resizeObserver.observe(canvas);

@@ -1,0 +1,207 @@
+/*
+ * The home screen's design language (tv-vibehack launcher): its wallpaper behind everything, the Outfit
+ * typeface and frosted-glass pills and cards over the wallpaper. Focused pills turn white with dark text;
+ * scenes and lights get a thin white edge instead. Loaded after style.css and only overrides it.
+ */
+
+@font-face {
+  font-family: Outfit;
+  src: url('./assets/outfit.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: block;
+}
+
+:root {
+  font-family: Outfit, -apple-system, 'Segoe UI', sans-serif;
+  /* The launcher's pill: a light sheen over the blurred wallpaper, darkened a little, with a thin rim. */
+  --sheen: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .08));
+  --tint: rgba(0, 0, 0, .2);
+  --rim: rgba(255, 255, 255, .22);
+  --blur: blur(4px) saturate(1.35);
+  --glass: rgba(255, 255, 255, .1);
+  --glass-2: rgba(255, 255, 255, .2);
+  --line: rgba(255, 255, 255, .16);
+  --muted: rgba(255, 255, 255, .68);
+  --ink: #111111;
+  background: #05070d;
+}
+
+/* The wallpaper, with the launcher's soft darkening under the top bar and at the bottom edge. */
+body {
+  background: #05070d url('./assets/wallpaper.jpg') center / cover no-repeat;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(3, 6, 14, .62) 0%, rgba(3, 6, 14, .18) 28%, rgba(3, 6, 14, .22) 70%, rgba(3, 6, 14, .6) 100%);
+}
+#app { position: relative; z-index: 0; }
+
+/* Older TV WebViews (Chrome < 108) have no dvh: without a fallback the app grows past the screen and the
+   scenes row is cut off. */
+#app { height: 100vh; height: 100dvh; }
+.sync-panel:has(.standalone-content) { max-height: 90vh; max-height: 90dvh; }
+
+/* ---- type -------------------------------------------------------------------------------------- */
+
+.brand strong { font-weight: 500; letter-spacing: -.01em; }
+.stage-caption h1 { font-weight: 300; letter-spacing: -.04em; text-shadow: 0 .2rem 1.5rem rgba(0, 0, 0, .35); }
+#clock { font-weight: 300; font-size: 1.5rem; color: #fff; letter-spacing: -.02em; }
+.controls h2, .scenes h2 { font-weight: 500; }
+.light-title strong, .scene-button, .room-tab, .sync-button, .all-off, .primary, .secondary { font-weight: 500; }
+.light-title small, .device-room, .stats small, .scene-heading p, footer, .home-name { color: var(--muted); }
+.stats strong, .stats #lights-on { font-weight: 400; text-shadow: 0 .1rem .8rem rgba(0, 0, 0, .4); }
+.stats svg { color: rgba(255, 255, 255, .8); }
+
+/* ---- frosted glass: the top bar's pills and the cards ------------------------------------------- */
+
+#status, .sync-button, .rooms, .home-name, .orbit-button, .controls, .scene-button, .sync-panel, .toast,
+.render-error, .logo {
+  background: var(--sheen), var(--tint);
+  border: 1px solid var(--rim);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+
+/* Pills: fully rounded, like Inputs, Wi-Fi and the round buttons. */
+#status, .sync-button, .rooms, .room-tab, .home-name, .orbit-button, .all-off, .device-filters, .device-filter,
+.primary, .secondary, .back-button, .toast { border-radius: 999px; }
+.sync-button { padding: .7rem 1.2rem; font-size: .75rem; }
+#status { color: #fff; padding: .5rem .95rem; }
+.logo { border-radius: 50%; }
+
+/* Inside a glass card, rows are lighter glass without their own blur (one blur layer is enough on a TV). */
+.controls { border-radius: 1.5rem; background: var(--sheen), rgba(0, 0, 0, .28); }
+.light-row, .all-off, .climate-card, .device-filters { background: rgba(255, 255, 255, .08); }
+.device-filter.selected, .room-tab.selected { background: rgba(255, 255, 255, .22); color: #fff; }
+.room-tab { color: rgba(255, 255, 255, .78); }
+.light-icon { background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .78); }
+.toggle { background: rgba(255, 255, 255, .22); }
+.step { background: rgba(255, 255, 255, .08); border-color: var(--rim); color: #fff; }
+.icon-button { background: rgba(255, 255, 255, .14); }
+.on .power { background: #fff; color: var(--ink); border-color: #fff; }
+
+/* Scene buttons: the launcher's scene tiles, warm while active. */
+.scene-button { border-radius: 1.4rem; color: #fff; }
+.scene-button.active { background: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, .16)), var(--tint); border-color: rgba(255, 255, 255, .45); }
+
+/* The 3D stage floats on the wallpaper. */
+.stage { background: none; }
+
+/* ---- dialogs ----------------------------------------------------------------------------------- */
+
+.modal-backdrop {
+  background: rgba(3, 6, 14, .38);
+  -webkit-backdrop-filter: blur(4px) saturate(1.2);
+  backdrop-filter: blur(4px) saturate(1.2);
+}
+.sync-panel { border-radius: 1.8rem; background: var(--sheen), rgba(0, 0, 0, .32); box-shadow: 0 2rem 6rem rgba(0, 0, 0, .45); }
+.sync-panel h2 { font-weight: 300; letter-spacing: -.03em; }
+.sync-description, .sync-content p { color: rgba(255, 255, 255, .78); }
+.sync-content .sync-note, .eyebrow { color: rgba(255, 255, 255, .58); }
+.sync-state { border-top-color: var(--line); color: rgba(255, 255, 255, .8); }
+.secondary { background: var(--glass); border: 1px solid var(--rim); }
+.primary { background: rgba(255, 255, 255, .3); border: 1px solid rgba(255, 255, 255, .5); color: #fff; }
+.login-form input { background: rgba(0, 0, 0, .3); border-color: var(--rim); border-radius: 999px; padding: .8rem 1.2rem; }
+.toast { color: #fff; background: var(--sheen), rgba(0, 0, 0, .45); }
+.import-row { border-top-color: var(--line); color: var(--muted); }
+
+/* ---- focus: solid white with dark text, like every focused control on the home screen ------------ */
+
+button:focus-visible { background: #fff !important; color: var(--ink) !important; border-color: #fff !important; }
+button:focus-visible svg, button:focus-visible small, button:focus-visible strong { color: var(--ink) !important; }
+
+/* ---- lights: a 3-column grid of tiles; a lit tile glows warm, so no On/Off text or switch ---------- */
+
+.device-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; align-content: start; }
+.device-list .light-row {
+  flex-direction: column; align-items: flex-start; justify-content: space-between;
+  height: 6.4rem; margin: 0; padding: .8rem .75rem; border-radius: 1.2rem; gap: .4rem;
+}
+.device-list .light-row .light-title { flex: 0 0 auto; gap: .2rem; }
+.device-list .light-row .light-title strong { font-size: .72rem; line-height: 1.2; }
+.device-list .light-row .light-title small:empty { display: none; }
+.device-list .light-row.on { background: linear-gradient(180deg, rgba(255, 196, 107, .26), rgba(255, 196, 107, .1)); }
+.device-list .empty { grid-column: 1 / -1; }
+.device-list .light-row:focus-visible { transform: scale(1.06); }
+
+/* ---- layout: no app name, room title, Explore button, scenes heading or key hints ------------------- */
+
+#app { grid-template-rows: 4.6rem 3.7rem minmax(0, 1fr); padding-bottom: 1.6rem; }
+header { justify-content: flex-end; }
+
+/* The model sits on a frosted card, like the home screen's widget. */
+.stage {
+  background: var(--sheen), var(--tint);
+  border: 1px solid var(--rim);
+  border-radius: 1.5rem;
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+.home-name { top: 1rem; right: 1rem; }
+.stats { left: 1.4rem; bottom: 1.2rem; }
+
+/* ---- scenes and lights: focus is a white edge (like the home screen's 3D card), not a white fill ---- */
+
+.scenes .scene-button:focus-visible, .device-list .light-row:focus-visible {
+  color: #fff !important;
+  border: 1px solid #fff !important;
+  box-shadow: none;
+}
+.scenes .scene-button:focus-visible { background: var(--sheen), var(--tint) !important; }
+.scenes .scene-button.active:focus-visible { background: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, .16)), var(--tint) !important; }
+.device-list .light-row:focus-visible { background: rgba(255, 255, 255, .12) !important; }
+.device-list .light-row.on:focus-visible { background: linear-gradient(180deg, rgba(255, 196, 107, .3), rgba(255, 196, 107, .12)) !important; }
+.scenes .scene-button:focus-visible svg, .device-list .light-row:focus-visible svg { color: inherit !important; }
+.scenes .scene-button.active:focus-visible svg { color: var(--warm) !important; }
+.device-list .light-row:focus-visible strong { color: #fff !important; }
+.device-list .light-row:focus-visible small { color: var(--muted) !important; }
+.device-list .light-row:focus-visible .light-icon { background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .78); }
+.device-list .light-row.on:focus-visible .light-icon { background: rgba(255, 196, 107, .16); color: var(--warm); }
+
+/* ---- three cards down to the bottom: the model, the scenes and the lights -------------------------- */
+
+.layout { grid-template-columns: minmax(0, 1fr) auto 24.8rem; gap: 1.2rem; padding-bottom: 0; }
+.scenes {
+  display: flex; flex-direction: column; align-items: stretch; min-height: 0; padding: 1rem;
+  border: 1px solid var(--rim); border-radius: 1.5rem;
+  background: var(--sheen), var(--tint);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+/* Four rows that share the card's height, filled column by column: up to 4 scenes in one column, 8 in two. */
+.scenes .scene-list {
+  flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); grid-auto-flow: column;
+  grid-auto-columns: 8.6rem; gap: .7rem; padding: 0; margin: 0; overflow: visible;
+}
+.scenes .scene-button { min-width: 0; width: 100%; height: 100%; gap: .7rem; font-size: .8rem; }
+.scenes .scene-button svg { width: 1.8rem; height: 1.8rem; }
+
+/* ---- lights: one section per room, each with its name and a dividing line ------------------------- */
+
+.device-list { display: block; }
+.device-section + .device-section { border-top: 1px solid var(--line); margin-top: .8rem; padding-top: .7rem; }
+.device-section h3 { margin: 0 0 .55rem .2rem; font-size: .62rem; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.light-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+.device-list .light-row { height: 5.3rem; padding: .7rem .7rem; }
+.device-list .light-icon { width: 1.9rem; height: 1.9rem; border-radius: .65rem; }
+.device-list .light-icon svg { width: 1.05rem; height: 1.05rem; }
+
+/* The scenes card's heading, like the lights card's "Devices". */
+.scenes .controls-heading { padding-top: 0; }
+
+/* ---- the active scene glows warm, like a lit light ------------------------------------------------ */
+
+.scenes .scene-button.active,
+.scenes .scene-button.active:focus-visible {
+  background: linear-gradient(180deg, rgba(255, 196, 107, .3), rgba(255, 196, 107, .12)), var(--tint) !important;
+  box-shadow: 0 0 1.4rem rgba(255, 196, 107, .28), inset 0 0 1.2rem rgba(255, 196, 107, .12);
+}
+.scenes .scene-button.active { border-color: rgba(255, 196, 107, .6); }
+.scenes .scene-button.active svg { color: var(--warm) !important; filter: drop-shadow(0 0 .4rem rgba(255, 196, 107, .6)); }
+
+/* Same inner margin at the bottom of the lights card as at its top. */
+.controls { padding-bottom: 1rem; }
