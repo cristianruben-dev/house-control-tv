@@ -19,6 +19,13 @@ final class DemoHome {
   if(kind.equals("light")||kind.equals("acPower"))change(kind.equals("light")?"lights":"acs",id,new JSONObject().put("on",action.get("on")));
   else if(kind.equals("lightSet")){JSONObject patch=new JSONObject();for(String key:new String[]{"on","brightness","temp","color"})if(action.has(key))patch.put(key,action.get(key));change("lights",id,patch);}
   else if(kind.equals("acTarget"))change("acs",id,new JSONObject().put("target",action.get("target")));
+  else if(kind.equals("scene")&&id.equals(state.opt("scene"))){
+   // The active scene again: its lights go off and no scene is active.
+   JSONObject patches=find("scenes",id).optJSONObject("lights");JSONArray devices=plan.optJSONArray("lights");
+   if(patches!=null&&devices!=null)for(int i=0;i<devices.length();i++){String key=devices.getJSONObject(i).getString("id");JSONObject patch=new JSONObject();CloudMapper.merge(patch,patches.optJSONObject("*"));CloudMapper.merge(patch,patches.optJSONObject(key));
+    if(patch.optBoolean("on"))change("lights",key,new JSONObject().put("on",false));}
+   state.put("scene",JSONObject.NULL);
+  }
   else if(kind.equals("scene")||kind.equals("room")||kind.equals("allLights")){
    JSONObject scene=kind.equals("scene")?find("scenes",id):null;if(kind.equals("room"))find("rooms",id);
    for(String section:new String[]{"lights","acs"}){JSONArray devices=plan.optJSONArray(section);if(devices==null)continue;

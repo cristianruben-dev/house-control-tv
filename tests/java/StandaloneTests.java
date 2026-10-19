@@ -22,6 +22,8 @@ public class StandaloneTests {
   check(lit==1&&demoLights.getJSONObject("main.tv").getBoolean("on"),"Demo Movie only lights the TV strip");
   demoLights=demo.action(new JSONObject().put("kind","scene").put("id","night")).getJSONObject("home").getJSONObject("state").getJSONObject("lights");
   check(demoLights.getJSONObject("main.bed").getBoolean("on")&&demoLights.getJSONObject("main.bed.left").getBoolean("on"),"Demo Night has both bedside lamps");
+  JSONObject again=demo.action(new JSONObject().put("kind","scene").put("id","night")).getJSONObject("home");demoLights=again.getJSONObject("state").getJSONObject("lights");
+  check(!demoLights.getJSONObject("main.bed").getBoolean("on")&&!demoLights.getJSONObject("main.bed.left").getBoolean("on")&&again.getJSONObject("state").isNull("scene"),"Running the active scene again switches its lights off");
   example.getJSONArray("lights").getJSONObject(0).put("link",new JSONObject().put("service","hue").put("id","never-send"));rejected=false;try{new DemoHome(example);}catch(IllegalArgumentException e){rejected=true;}check(rejected,"Real bindings rejected by demo constructor");
   localMappings();
   System.out.println(tests+" standalone protocol tests passed.");

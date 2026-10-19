@@ -43,7 +43,12 @@ async function command(action) {
       if (action.kind === 'allLights' || action.kind === 'room') { for (const d of config.lights.filter(d => action.kind !== 'room' || d.room === action.id)) s.lights[d.id].on = action.on; s.scene = null; }
       if (action.kind === 'acPower') s.acs[action.id].on = action.on;
       if (action.kind === 'acTarget') s.acs[action.id].target = action.target;
-      if (action.kind === 'scene') {
+      if (action.kind === 'scene' && s.scene === action.id) {
+        // The active scene again switches it off: the lights it turns on go off.
+        const scene = config.scenes.find(x => x.id === action.id);
+        for (const [id, value] of Object.entries(s.lights)) if ({ ...(scene.lights['*'] || {}), ...(scene.lights[id] || {}) }.on) value.on = false;
+        s.scene = null;
+      } else if (action.kind === 'scene') {
         const scene = config.scenes.find(s => s.id === action.id);
         for (const key of ['lights','acs']) for (const [id, value] of Object.entries(s[key])) Object.assign(value, scene[key]['*'] || {}, scene[key][id] || {});
         s.scene = scene.id;

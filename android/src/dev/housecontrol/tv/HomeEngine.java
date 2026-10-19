@@ -101,6 +101,7 @@ final class HomeEngine {
             if(kind.equals("light")||kind.equals("acPower")){Object value=action.get("on");if(!(value instanceof Boolean))throw new IOException("Expected an explicit on/off value.");change(kind.equals("light")?"lights":"acs",id,new JSONObject().put("on",value));}
             else if(kind.equals("lightSet")){JSONObject patch=new JSONObject();for(String key:new String[]{"on","brightness","temp","color"})if(action.has(key))patch.put(key,action.get(key));if(patch.length()==0)throw new IOException("Nothing to change.");change("lights",id,patch);}
             else if(kind.equals("acTarget")){JSONObject d; synchronized(lock){d=find("acs",id);}Object value=action.get("target");if(!(value instanceof Number))throw new IOException("Invalid temperature.");double target=((Number)value).doubleValue();if(!Double.isFinite(target)||target<d.optInt("min",16)||target>d.optInt("max",30))throw new IOException("Temperature is outside this unit’s range.");change("acs",id,new JSONObject().put("target",Math.round(target)));}
+            else if(kind.equals("scene")&&isActiveScene(id))sceneOff(id);
             else if(kind.equals("scene")||kind.equals("allLights")||kind.equals("room")){
                 if(kind.equals("scene")&&(ha.connected()||hue.connected()))pollLocal();
                 JSONObject scene=null; synchronized(lock){if(kind.equals("scene"))scene=CloudMapper.copy(find("scenes",id));else if(kind.equals("room"))find("rooms",id);}
@@ -123,6 +124,19 @@ final class HomeEngine {
     }
     /** A burst of events (a scene switching six lamps) becomes one read. */
     void localChanged(){if(localPending.compareAndSet(false,true))localScheduler.schedule(()->{localPending.set(false);try{pollLocal();}catch(Exception ignored){}},300,TimeUnit.MILLISECONDS);}
+    boolean isActiveScene(String id){synchronized(lock){Object s=state==null?null:state.opt("scene");return s instanceof String&&s.equals(id);}}
+    /** Running the active scene again switches it off: the lights it turns on go off, and no scene is active. */
+    void sceneOff(String id)throws Exception{
+        JSONObject scene;JSONArray devices;synchronized(lock){scene=CloudMapper.copy(find("scenes",id));devices=new JSONArray(plan.optJSONArray("lights")==null?"[]":plan.getJSONArray("lights").toString());}
+        JSONObject patches=scene.optJSONObject("lights");List<String> errors=new ArrayList<>();
+        if(patches!=null)for(int i=0;i<devices.length();i++){JSONObject d=devices.getJSONObject(i),patch=new JSONObject();String deviceId=d.getString("id");
+            CloudMapper.merge(patch,patches.optJSONObject("*"));CloudMapper.merge(patch,patches.optJSONObject(deviceId));
+            boolean lit;synchronized(lock){lit=state.getJSONObject("lights").getJSONObject(deviceId).optBoolean("on");}
+            if(patch.optBoolean("on")&&lit)try{change("lights",deviceId,new JSONObject().put("on",false));}catch(Exception e){errors.add(d.optString("name",deviceId)+": "+safe(e));}
+        }
+        synchronized(lock){state.put("scene",JSONObject.NULL);save();}
+        if(!errors.isEmpty())throw new IOException(String.join("; ",errors));
+    }
     void pollLocal()throws Exception{
         JSONObject p;synchronized(lock){if(demoHome!=null||plan==null)return;p=CloudMapper.copy(plan);}
         Set<String> haIds=new HashSet<>(),hueLights=new HashSet<>(),hueSensors=new HashSet<>();
