@@ -1,7 +1,9 @@
 import './polyfills.js';
 import { normalize } from './vendor/config.js';
 import { createWorld } from './vendor/three/world.js';
-const style=document.createElement('style');style.textContent='html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b111d;color:#9baecb;font-family:sans-serif}canvas{width:100%;height:100%;display:block}p{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;padding:1rem;text-align:center;pointer-events:none}';document.head.append(style);
+// A host may draw the card itself (frosted glass): the model then floats on a transparent page.
+const BACKGROUND=window.HouseWidget?.background?.()||'#0b111d';
+const style=document.createElement('style');style.textContent='html,body{margin:0;width:100%;height:100%;overflow:hidden;background:'+(BACKGROUND==='transparent'?'transparent':BACKGROUND)+';color:#9baecb;font-family:sans-serif}canvas{width:100%;height:100%;display:block}p{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;padding:1rem;text-align:center;pointer-events:none}';document.head.append(style);
 let canvas=document.querySelector('canvas');const message=document.querySelector('#message');
 const listeners=new Set();const store={state:{lights:{},acs:{}},on(fn){listeners.add(fn);return()=>listeners.delete(fn);}};
 let world,revision='',lastState='',active=true;
@@ -11,7 +13,7 @@ function refresh(){
  try{
   const home=JSON.parse(window.HouseWidget?.home()||'{}');if(!home.plan){message.textContent=home.error||'Open House Control to set up your home.';return;}
   const serialized=JSON.stringify(home.state);
-  if(home.revision!==revision){world?.dispose();world=null;resizeObserver.unobserve(canvas);const replacement=document.createElement('canvas');replacement.setAttribute('aria-label','Live 3D home');canvas.replaceWith(replacement);canvas=replacement;resizeObserver.observe(canvas);store.state=home.state;const config=normalize(home.plan);world=createWorld(canvas,config,store,{onHover(){},onPick(){},background:'#0b111d',presentationAspect:window.HouseWidget?.renderAspect?.()||null,resolution:()=>window.HouseWidget?.resolution?.()??1});world.setInsets(0,0);world.setZoom(WIDGET_ZOOM);world.setRunning(active&&!document.hidden);world.settle();revision=home.revision;}
+  if(home.revision!==revision){world?.dispose();world=null;resizeObserver.unobserve(canvas);const replacement=document.createElement('canvas');replacement.setAttribute('aria-label','Live 3D home');canvas.replaceWith(replacement);canvas=replacement;resizeObserver.observe(canvas);store.state=home.state;const config=normalize(home.plan);world=createWorld(canvas,config,store,{onHover(){},onPick(){},background:BACKGROUND,presentationAspect:window.HouseWidget?.renderAspect?.()||null,resolution:()=>window.HouseWidget?.resolution?.()??1});world.setInsets(0,0);world.setZoom(WIDGET_ZOOM);world.setRunning(active&&!document.hidden);world.settle();revision=home.revision;}
   else if(serialized!==lastState){store.state=home.state;for(const fn of listeners)fn({type:'bulk'});world?.setRunning(active&&!document.hidden);}
   lastState=serialized;message.textContent='';
  }catch(error){message.textContent='Your home will appear here shortly.';console.warn('Widget',error.message);}
