@@ -1,1 +1,18 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="96dp" android:height="96dp" android:viewportWidth="96" android:viewportHeight="96"><path android:fillColor="#14243b" android:pathData="M0,0h96v96h-96z"/><path android:fillColor="#dce9ff" android:pathData="M16,46L48,18L80,46L74,53L70,49V78H54V59H42V78H26V49L22,53z"/></vector>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App icon: the banner's dusk gradient and line-drawn house, square. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="96dp" android:height="96dp"
+    android:viewportWidth="96" android:viewportHeight="96">
+    <path android:pathData="M0,0h96v96h-96z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="0" android:endY="96">
+                <item android:offset="0" android:color="#FF0B1730" />
+                <item android:offset="1" android:color="#FF2C4258" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#FFFFC46B" android:pathData="M53,47h7v7h-7z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M26,46L48,27L70,46M32,41V68H64V41M43,68V56H53V68" />
+</vector>

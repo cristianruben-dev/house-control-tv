@@ -1,1 +1,30 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="96dp" android:height="96dp" android:viewportWidth="96" android:viewportHeight="96"><path android:fillColor="#14243b" android:pathData="M0,0h96v96h-96z"/><path android:fillColor="#dce9ff" android:pathData="M16,46L48,18L80,46L74,53L70,49V78H54V59H42V78H26V49L22,53z"/></vector>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TV banner (16:9): a dusk gradient like the home screen's wallpaper, a warm glow and a small line-drawn house. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:pathData="M0,0h320v180h-320z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="0" android:endY="180">
+                <item android:offset="0" android:color="#FF0B1730" />
+                <item android:offset="0.62" android:color="#FF183A55" />
+                <item android:offset="1" android:color="#FF3B4A5C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M0,0h320v180h-320z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="160" android:centerY="150" android:gradientRadius="150">
+                <item android:offset="0" android:color="#80FFAE63" />
+                <item android:offset="0.55" android:color="#22FF8A50" />
+                <item android:offset="1" android:color="#00FF8A50" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Lit window. -->
+    <path android:fillColor="#FFFFC46B" android:pathData="M171,96h12v12h-12z" />
+    <!-- House: roof, walls and door, in one rounded white stroke. -->
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M120,92L160,58L200,92M130,84V128H190V84M151,128V106H169V128" />
+</vector>
