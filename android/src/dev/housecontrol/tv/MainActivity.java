@@ -103,6 +103,10 @@ public class MainActivity extends Activity {
             catch(Exception e){ return "{}"; }
         }
         @JavascriptInterface public void exit() { runOnUiThread(() -> finish()); }
+        /** Shows the on-screen keyboard for the focused text field (opened with OK, not by moving onto it). */
+        @JavascriptInterface public void keyboard() {
+            runOnUiThread(() -> { ((android.view.inputmethod.InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(web, 0); });
+        }
         @JavascriptInterface public void request(int id, String path, String body) {
             if (!java.util.Arrays.asList("/api/demo/action","/api/demo","/api/home","/api/action","/api/import","/api/connections","/api/connections/discover","/api/homeassistant/connect","/api/homeassistant/disconnect","/api/hue/pair","/api/hue/disconnect").contains(path)) return;
             network.execute(() -> {

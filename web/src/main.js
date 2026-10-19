@@ -189,13 +189,13 @@ async function openStandaloneSync() {
   const panel=el('section','sync-panel');const close=button('Back to home','ArrowLeft',closeModal,'back-button');
   const content=el('div','standalone-content');panel.append(close,content);modal.append(panel);document.body.append(modal);close.focus();
   const owner=modal;let timer=0;modalCleanup=()=>clearTimeout(timer);
-  const alive=()=>modal===owner;
+  const alive=()=>modal===owner;let pages=0;
   const message=el('p','sync-note');message.setAttribute('role','status');
   async function showHome() {
-    clearTimeout(timer);content.replaceChildren();
+    clearTimeout(timer);content.replaceChildren();owner.back=null;const page=++pages;
     let status;
     try { status=await api('/api/connections'); } catch(error) {content.append(el('p','setup-error',error.message));return;}
-    if(!alive())return;
+    if(!alive()||pages!==page)return;
     const ha=status.homeassistant,hue=status.hue,connected=[ha.connected&&'Home Assistant',hue.connected&&'Hue'].filter(Boolean);
     content.append(el('p','eyebrow','YOUR TV. YOUR HOME.'),el('h2','',connected.length?'Ready without your Mac':'Connect your devices to this TV'),el('p','sync-description',connected.length?'Your TV stores this home and sends commands directly to your devices. Your Mac can be off.':'Connect Home Assistant or pair a Philips Hue Bridge. The TV talks to them directly on your Wi-Fi.'));
     content.append(el('div','sync-state',connected.length?connected.join(' · ')+' connected · credentials stored on this TV':'No hub connected yet'));
@@ -205,9 +205,13 @@ async function openStandaloneSync() {
     file.onchange=async()=>{if(!file.files?.[0])return;try{const data=JSON.parse(await file.files[0].text());await api('/api/import',data);toast('Floor plan saved on TV');closeModal();}catch(error){message.textContent=error.message;}};
     const importRow=el('div','import-row');importRow.append(el('span','','Import floor plan JSON'),file);if(!nativeConfig)content.append(importRow);content.append(message);
     content.append(button('Home Assistant & Hue','Wifi',showServices,connected.length?'secondary':'primary'),button('Explore demo home','House',()=>switchDemo(true),'secondary'));
+    // Coming back from the hubs page the focused button is gone: land on the hubs button again.
+    if(!modal.contains(document.activeElement))content.querySelector('button')?.focus();
   }
   async function showServices() {
-    clearTimeout(timer);content.replaceChildren(el('h2','','Looking for your hubs…'));
+    // A search still running when this page is left must not draw it again.
+    const page=++pages,alive=()=>modal===owner&&pages===page;
+    clearTimeout(timer);content.replaceChildren(el('h2','','Looking for your hubs…'));owner.back=showHome;
     let status,found={homeassistant:[],hue:[]};
     try{status=await api('/api/connections');}catch(error){content.replaceChildren(el('p','setup-error',error.message),button('Back','ArrowLeft',showHome,'secondary'));return;}
     if(!alive())return;
@@ -235,7 +239,8 @@ async function openStandaloneSync() {
         content.append(el('p','sync-note','Pair, then press the round button on top of the bridge within a minute. The bridge’s certificate is remembered so another device at its address is refused.'));
       }
       content.append(note,button('Search the network again','RefreshCw',discover,'secondary'),button('Back','ArrowLeft',showHome,'secondary'));
-      content.querySelector('button,input')?.focus();
+      // A button, not a text field: focusing a field brings up the TV's on-screen keyboard over the page.
+      if(!modal.contains(document.activeElement))content.querySelector('button')?.focus();
     };
     async function pairHue(bridge,note){
       const started=Date.now();note.textContent='Press the round button on the Hue Bridge…';
@@ -303,7 +308,8 @@ if(!all.includes(current)){all[0]?.focus();return;}
   if(best){best.focus({preventScroll:true});best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});}
 }
 function back(){
-  if(modal){closeModal();return true;}
+  // The remote's Back leaves a dialog's inner page first (the hubs page goes back to Sync & connect).
+  if(modal){if(modal.back)modal.back();else closeModal();return true;}
   if(orbiting){orbiting=false;$('#orbit')?.classList.remove('active');return true;}
   if(room!=='all'){selectRoom('all');document.querySelector('[data-room="all"]')?.focus();return true;}
   return false;
@@ -314,6 +320,15 @@ document.addEventListener('keydown',e=>{
   if(orbiting&&!modal){if(e.key.startsWith('Arrow')){e.preventDefault();world?.orbit(e.key==='ArrowLeft'?-4:e.key==='ArrowRight'?4:0,e.key==='ArrowUp'?3:e.key==='ArrowDown'?-3:0);}if(e.key==='Enter'){e.preventDefault();back();}return;}
   if(e.key.startsWith('Arrow')){e.preventDefault();navigate(e.key);}
 });
+// On the TV, moving the remote over a text field must not bring up the on-screen keyboard and trap the D-pad
+// in it: fields stay read-only while merely focused, and OK opens the keyboard to edit.
+if(nativeConfig){
+  const field=n=>n instanceof HTMLInputElement&&!['file','checkbox','radio','button','submit'].includes(n.type);
+  const lock=n=>{if(field(n))n.readOnly=true;};
+  new MutationObserver(list=>{for(const m of list)for(const n of m.addedNodes)if(n.nodeType===1){lock(n);n.querySelectorAll?.('input').forEach(lock);}}).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('focusout',e=>lock(e.target));
+  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&field(e.target)&&e.target.readOnly){e.preventDefault();e.stopImmediatePropagation();const n=e.target;n.readOnly=false;n.setSelectionRange?.(n.value.length,n.value.length);window.HouseTV?.keyboard?.();}},true);
+}
 document.addEventListener('visibilitychange',()=>world?.setRunning(!document.hidden));
 async function loadDemo(){
   demo=true;online=false;const raw=await(await fetch('./plans/demo-loft.json')).json();config=normalize(raw);
