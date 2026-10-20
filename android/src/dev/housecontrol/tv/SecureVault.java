@@ -26,7 +26,7 @@ final class SecureVault implements SecretStore {
     }
     public synchronized JSONObject read() throws Exception {
         if(!file.getBaseFile().exists())return null;
-        byte[] data=file.readFully();if(data.length<28)throw new IOException("A saved TV connection needs to be renewed.");
+        byte[] data=file.readFully();if(data.length<28)throw new IOException("Hay que renovar una conexión guardada en la TV.");
         Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.DECRYPT_MODE,key(),new GCMParameterSpec(128,Arrays.copyOfRange(data,0,12)));
         return new JSONObject(new String(cipher.doFinal(Arrays.copyOfRange(data,12,data.length)),SharingTransport.UTF8));
     }

@@ -23,8 +23,8 @@ public class LocalHubTests {
 
   // Home Assistant
   HomeAssistantClient ha=new HomeAssistantClient(new MemoryStore(null));AtomicInteger changes=new AtomicInteger();ha.onChange=changes::incrementAndGet;
-  check(failure(()->{ha.connect(haURL,"wrong-token-0123456789abcdef");return null;}).contains("refused the token")&&!ha.connected(),"HA wrong token is refused and not kept");
-  check(failure(()->{ha.connect(haURL,"short");return null;}).contains("long-lived access token"),"HA token shape is checked before any request");
+  check(failure(()->{ha.connect(haURL,"wrong-token-0123456789abcdef");return null;}).contains("rechazó el token")&&!ha.connected(),"HA wrong token is refused and not kept");
+  check(failure(()->{ha.connect(haURL,"short");return null;}).contains("token de acceso de larga duración"),"HA token shape is checked before any request");
   Set<String> ids=new HashSet<>(Arrays.asList("light.living_lamp","switch.desk_plug","climate.bedroom_ac","sensor.balcony_temperature","light.renamed_lamp"));ha.watch(ids);
   ha.connect(haURL,token);check(ha.connected()&&ha.info().getString("name").equals("Mock Home")&&!ha.info().has("token")&&!ha.info().toString().contains(token),"HA connect keeps the token out of status");
   check(ha.vault.read().getString("token").equals(token),"HA token stored in the vault");
@@ -41,12 +41,12 @@ public class LocalHubTests {
   String log=mock(haURL,"/mock/log",null);
   check(log.contains("light.turn_on {\\\"brightness_pct\\\": 40, \\\"entity_id\\\": \\\"light.living_lamp\\\", \\\"rgb_color\\\": [255, 0, 0]}"),"HA light command reaches the server");
   check(log.contains("climate.set_hvac_mode {\\\"entity_id\\\": \\\"climate.bedroom_ac\\\", \\\"hvac_mode\\\": \\\"heat_cool\\\"}")&&log.contains("\\\"fan_mode\\\": \\\"Mid\\\"")&&log.contains("\\\"temperature\\\": 21")&&log.contains("\\\"hvac_mode\\\": \\\"off\\\""),"HA climate uses the entity's own mode and fan names");
-  check(failure(()->{ha.send("sensor.balcony_temperature",new JSONObject().put("on",true),new JSONObject());return null;}).contains("cannot be switched"),"HA sensors cannot be switched");
+  check(failure(()->{ha.send("sensor.balcony_temperature",new JSONObject().put("on",true),new JSONObject());return null;}).contains("no se puede encender"),"HA sensors cannot be switched");
   check(!ha.adopt(new JSONObject().put("url","http://127.0.0.1:1").put("token","mac-token-0123456789abcdef")),"A connection set up on the TV wins over the Mac's");
   ha.disconnect();check(!ha.connected()&&ha.vault.read()==null,"HA disconnect removes the token");
   check(ha.adopt(new JSONObject().put("url",haURL).put("token",token).put("name","Mac's HA"))&&ha.info().getString("source").equals("mac"),"HA connection adopted from the Mac");
   check(ha.adopt(null)&&!ha.connected(),"HA connection removed on the Mac is removed here");
-  check(failure(()->ha.adopt(new JSONObject().put("url","http://8.8.8.8:8123").put("token","mac-token-0123456789abcdef"))).contains("not on your home network"),"Mac cannot point the token at a public plain-HTTP server");
+  check(failure(()->ha.adopt(new JSONObject().put("url","http://8.8.8.8:8123").put("token","mac-token-0123456789abcdef"))).contains("no está en la red de tu casa"),"Mac cannot point the token at a public plain-HTTP server");
   if(args.length>1){ // a Home Assistant older than 2022.4: no subscribe_entities
    JSONObject legacy=new JSONObject(new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(args[1])),SharingTransport.UTF8));
    HomeAssistantClient old=new HomeAssistantClient(new MemoryStore(null));AtomicInteger oldChanges=new AtomicInteger();old.onChange=oldChanges::incrementAndGet;old.watch(Collections.singleton("switch.desk_plug"));old.connect(legacy.getString("homeassistant"),legacy.getString("token"));
@@ -57,8 +57,8 @@ public class LocalHubTests {
 
   // Philips Hue
   HueClient hue=new HueClient(new MemoryStore(null));AtomicInteger hueChanges=new AtomicInteger();hue.onChange=hueChanges::incrementAndGet;
-  check(failure(()->{hue.pair(hueHost,"","");return null;}).contains("round button")&&!hue.connected(),"Hue pairing waits for the link button");
-  check(failure(()->{hue.pair("8.8.8.8","","");return null;}).contains("not on your home network"),"Hue pairing stays on the home network");
+  check(failure(()->{hue.pair(hueHost,"","");return null;}).contains("botón redondo")&&!hue.connected(),"Hue pairing waits for the link button");
+  check(failure(()->{hue.pair("8.8.8.8","","");return null;}).contains("no está en la red de tu casa"),"Hue pairing stays on the home network");
   mock(hueBase,"/mock/press",new JSONObject());hue.pair(hueHost,"","");
   JSONObject paired=hue.vault.read();
   check(hue.connected()&&hue.info().getString("name").equals("Mock Hue Bridge")&&hue.info().getString("bridgeId").equals("mock0bridge0001")&&!hue.info().toString().contains(paired.getString("key")),"Hue pairing names the bridge, keeps the key out of status");
@@ -72,9 +72,9 @@ public class LocalHubTests {
   hue.send(lamp,new JSONObject().put("on",true).put("brightness",.5).put("color","#0000ff"));
   JSONObject now=hue.read(Collections.singleton(lamp),Collections.emptySet()).get(lamp).getJSONObject("light");double[] blue=LocalMapper.rgb(now.getString("color"));
   check(now.getBoolean("on")&&Math.abs(now.getDouble("brightness")-.5)<1e-9&&blue[2]==1&&blue[0]<.2,"Hue command applied by the bridge");
-  check(failure(()->{hue.send("../config",new JSONObject().put("on",true));return null;}).contains("Unknown Hue lamp"),"Hue ids are validated");
+  check(failure(()->{hue.send("../config",new JSONObject().put("on",true));return null;}).contains("Lámpara Hue desconocida"),"Hue ids are validated");
   JSONObject forged=CloudMapper.copy(paired).put("certificate","0000000000000000000000000000000000000000000000000000000000000000");
-  HueClient impostor=new HueClient(new MemoryStore(forged));check(failure(()->impostor.read(Collections.singleton(lamp),Collections.emptySet())).contains("not the paired Hue Bridge"),"A different certificate at the bridge address is refused");impostor.disconnect();
+  HueClient impostor=new HueClient(new MemoryStore(forged));check(failure(()->impostor.read(Collections.singleton(lamp),Collections.emptySet())).contains("no es el Hue Bridge vinculado"),"A different certificate at the bridge address is refused");impostor.disconnect();
   HueClient shared=new HueClient(new MemoryStore(null));check(shared.adopt(CloudMapper.copy(paired).put("certificate","")),"Hue pairing adopted from the Mac");
   shared.read(Collections.singleton(lamp),Collections.emptySet());check(shared.vault.read().getString("certificate").equals(paired.getString("certificate")),"A shared pairing without a pin is pinned on first use");shared.disconnect();
   hue.disconnect();check(!hue.connected()&&hue.vault.read()==null,"Hue disconnect removes the key");

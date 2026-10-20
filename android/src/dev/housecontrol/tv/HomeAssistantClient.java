@@ -23,7 +23,7 @@ final class HomeAssistantClient {
     /** Each climate entity's own names for the panel's modes and fan speeds, from the last read. */
     final Map<String,JSONObject> modes=new HashMap<>(),fans=new HashMap<>();
     private Thread listener;private volatile int generation=0;
-    HomeAssistantClient(SecretStore vault){this.vault=vault;try{config=vault.read();}catch(Exception e){config=null;lastError="Connect Home Assistant again.";}if(config!=null)listen();}
+    HomeAssistantClient(SecretStore vault){this.vault=vault;try{config=vault.read();}catch(Exception e){config=null;lastError="Vuelve a conectar Home Assistant.";}if(config!=null)listen();}
     boolean connected(){return config!=null;}
     JSONObject info()throws JSONException{JSONObject c=config;JSONObject out=new JSONObject().put("connected",c!=null).put("lastError",lastError);
         if(c!=null)out.put("url",c.optString("url")).put("name",c.optString("name","Home Assistant")).put("version",c.optString("version")).put("source",c.optString("source","tv"));return out;}
@@ -31,7 +31,7 @@ final class HomeAssistantClient {
     static void allowed(String url)throws IOException{URI u=URI.create(url);if(u.getScheme().equals("http"))LocalMapper.requirePrivate(u.getHost());}
     synchronized void connect(String url,String token)throws Exception{
         String u=LocalMapper.haURL(url),t=token==null?"":token.trim();
-        if(!t.matches("[A-Za-z0-9._-]{20,2048}"))throw new IOException("Paste a long-lived access token: your profile in Home Assistant → Security → Long-lived access tokens.");
+        if(!t.matches("[A-Za-z0-9._-]{20,2048}"))throw new IOException("Pega un token de acceso de larga duración: tu perfil en Home Assistant → Seguridad → Tokens de acceso de larga duración.");
         allowed(u);JSONObject candidate=new JSONObject().put("url",u).put("token",t).put("source","tv");
         Object about=request("GET","/api/config",null,candidate);JSONObject a=about instanceof JSONObject?(JSONObject)about:new JSONObject();
         candidate.put("name",a.optString("location_name","Home Assistant")).put("version",a.optString("version"));
@@ -41,7 +41,7 @@ final class HomeAssistantClient {
     synchronized boolean adopt(JSONObject shared)throws Exception{
         JSONObject c=config;if(c!=null&&!"mac".equals(c.optString("source")))return false;
         if(shared==null){if(c==null)return false;disconnect();return true;}
-        String u=LocalMapper.haURL(shared.optString("url")),t=shared.optString("token");if(!t.matches("[A-Za-z0-9._-]{20,2048}"))throw new IOException("The Mac shared an invalid Home Assistant token.");allowed(u);
+        String u=LocalMapper.haURL(shared.optString("url")),t=shared.optString("token");if(!t.matches("[A-Za-z0-9._-]{20,2048}"))throw new IOException("La Mac compartió un token de Home Assistant no válido.");allowed(u);
         if(c!=null&&c.optString("url").equals(u)&&c.optString("token").equals(t))return false;
         JSONObject next=new JSONObject().put("url",u).put("token",t).put("name",shared.optString("name","Home Assistant")).put("version",shared.optString("version")).put("source","mac");
         vault.write(next);config=next;lastError="";modes.clear();fans.clear();listen();return true;
@@ -58,27 +58,27 @@ final class HomeAssistantClient {
         return out;
     }
     void send(String id,JSONObject patch,JSONObject state)throws Exception{
-        if(!LocalMapper.entity(id)||id.startsWith("sensor."))throw new IOException("This Home Assistant entity cannot be switched.");
+        if(!LocalMapper.entity(id)||id.startsWith("sensor."))throw new IOException("Esta entidad de Home Assistant no se puede encender ni apagar.");
         boolean known;synchronized(this){known=modes.containsKey(id);}if(id.startsWith("climate.")&&!known)read(Collections.singleton(id));
         JSONObject m,f;synchronized(this){m=modes.getOrDefault(id,new JSONObject());f=fans.getOrDefault(id,new JSONObject());}
         JSONArray calls=LocalMapper.haCalls(id,patch,state,f,m);
         for(int i=0;i<calls.length();i++){JSONObject c=calls.getJSONObject(i);commandAttempts++;request("POST","/api/services/"+c.getString("domain")+"/"+c.getString("service"),c.getJSONObject("data"),null);}
     }
     Object request(String method,String path,JSONObject body,JSONObject using)throws Exception{
-        JSONObject c=using!=null?using:config;if(c==null)throw new IOException("Connect Home Assistant on this TV first.");
+        JSONObject c=using!=null?using:config;if(c==null)throw new IOException("Primero conecta Home Assistant en esta TV.");
         HttpURLConnection h=(HttpURLConnection)new URL(c.getString("url")+path).openConnection(Proxy.NO_PROXY);
         h.setConnectTimeout(5000);h.setReadTimeout(9000);h.setInstanceFollowRedirects(false);h.setUseCaches(false);h.setRequestMethod(method);
         h.setRequestProperty("Authorization","Bearer "+c.getString("token"));h.setRequestProperty("Accept","application/json");
         try{
             if(body!=null){h.setDoOutput(true);h.setRequestProperty("Content-Type","application/json");try(OutputStream o=h.getOutputStream()){o.write(body.toString().getBytes(SharingTransport.UTF8));}}
             int status=h.getResponseCode();
-            if(status==401||status==403)throw new IOException("Home Assistant refused the token. Create a new long-lived access token and connect again.");
+            if(status==401||status==403)throw new IOException("Home Assistant rechazó el token. Crea un token de acceso de larga duración nuevo y vuelve a conectar.");
             if(status==404)throw new NotFound();
             InputStream stream=status<400?h.getInputStream():h.getErrorStream();byte[] data=new byte[0];
-            if(stream!=null){ByteArrayOutputStream b=new ByteArrayOutputStream();try(InputStream in=stream){byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1){b.write(buf,0,n);if(b.size()>6*1024*1024)throw new IOException("Home Assistant's answer is too large.");}}data=b.toByteArray();}
-            if(status<200||status>=300)throw new IOException("Home Assistant answered "+status+(status==400?": it rejected this setting.":"."));
+            if(stream!=null){ByteArrayOutputStream b=new ByteArrayOutputStream();try(InputStream in=stream){byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1){b.write(buf,0,n);if(b.size()>6*1024*1024)throw new IOException("La respuesta de Home Assistant es demasiado grande.");}}data=b.toByteArray();}
+            if(status<200||status>=300)throw new IOException("Home Assistant respondió "+status+(status==400?": rechazó este ajuste.":"."));
             String text=new String(data,SharingTransport.UTF8).trim();return text.isEmpty()?null:new JSONTokener(text).nextValue();
-        }catch(SocketTimeoutException|ConnectException|UnknownHostException|NoRouteToHostException e){throw new IOException("Home Assistant at "+c.optString("url")+" did not answer.");}
+        }catch(SocketTimeoutException|ConnectException|UnknownHostException|NoRouteToHostException e){throw new IOException("Home Assistant en "+c.optString("url")+" no respondió.");}
         finally{h.disconnect();}
     }
 
@@ -98,7 +98,7 @@ final class HomeAssistantClient {
     boolean subscribe(JSONObject c,Set<String> ids,int gen)throws Exception{
         try(MiniWebSocket ws=MiniWebSocket.open(c.getString("url")+"/api/websocket")){
             ws.read(10000);ws.send(new JSONObject().put("type","auth").put("access_token",c.getString("token")).toString());
-            String auth=ws.read(10000);if(auth==null||!auth.contains("\"auth_ok\"")){lastError="Home Assistant refused the token. Create a new long-lived access token and connect again.";return true;}
+            String auth=ws.read(10000);if(auth==null||!auth.contains("\"auth_ok\"")){lastError="Home Assistant rechazó el token. Crea un token de acceso de larga duración nuevo y vuelve a conectar.";return true;}
             ws.send(new JSONObject().put("id",1).put("type","subscribe_entities").put("entity_ids",new JSONArray(ids)).toString());boolean filter=false;
             while(gen==generation&&config==c&&active.getAsBoolean()){
                 String text=ws.read(5000);if(text==null)continue;JSONObject m;try{m=new JSONObject(text);}catch(JSONException e){continue;}

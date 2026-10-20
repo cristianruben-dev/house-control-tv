@@ -17,14 +17,14 @@ final class MiniWebSocket implements Closeable {
         URI u=new URI(url);boolean tls=u.getScheme().equals("https");String host=u.getHost();int port=u.getPort()==-1?(tls?443:80):u.getPort();
         Socket s=new Socket(Proxy.NO_PROXY);s.connect(new InetSocketAddress(host,port),5000);
         if(tls){SSLSocket ssl=(SSLSocket)((SSLSocketFactory)SSLSocketFactory.getDefault()).createSocket(s,host,port,true);ssl.startHandshake();
-            if(!HttpsURLConnection.getDefaultHostnameVerifier().verify(host,ssl.getSession())){ssl.close();throw new IOException("The server certificate does not match "+host+".");}s=ssl;}
+            if(!HttpsURLConnection.getDefaultHostnameVerifier().verify(host,ssl.getSession())){ssl.close();throw new IOException("El certificado del servidor no coincide con "+host+".");}s=ssl;}
         try{s.setSoTimeout(10000);byte[] nonce=new byte[16];new SecureRandom().nextBytes(nonce);String key=Base64.getEncoder().encodeToString(nonce);
             OutputStream out=s.getOutputStream();String path=u.getRawPath()==null||u.getRawPath().isEmpty()?"/":u.getRawPath();
             out.write(("GET "+path+" HTTP/1.1\r\nHost: "+(host.contains(":")?"["+host+"]":host)+(u.getPort()==-1?"":":"+port)+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\n\r\n").getBytes(SharingTransport.UTF8));out.flush();
-            InputStream in=new BufferedInputStream(s.getInputStream());String status=line(in);if(status==null||!status.startsWith("HTTP/1.1 101"))throw new IOException("The server refused the live-update connection.");
+            InputStream in=new BufferedInputStream(s.getInputStream());String status=line(in);if(status==null||!status.startsWith("HTTP/1.1 101"))throw new IOException("El servidor rechazó la conexión de actualizaciones en vivo.");
             String accept=Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-1").digest((key+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes(SharingTransport.UTF8)));boolean ok=false;String h;
             while((h=line(in))!=null&&!h.isEmpty()){int c=h.indexOf(':');if(c>0&&h.substring(0,c).trim().equalsIgnoreCase("sec-websocket-accept")&&h.substring(c+1).trim().equals(accept))ok=true;}
-            if(!ok)throw new IOException("Invalid live-update handshake.");return new MiniWebSocket(s,in,out);
+            if(!ok)throw new IOException("Saludo de actualizaciones en vivo no válido.");return new MiniWebSocket(s,in,out);
         }catch(Exception e){s.close();throw e;}
     }
     private void frame(int opcode,byte[] p)throws IOException{
@@ -42,7 +42,7 @@ final class MiniWebSocket implements Closeable {
             try{b0=in.read();}catch(SocketTimeoutException e){if(message.size()==0)return null;throw e;}
             if(b0<0)throw new EOFException();socket.setSoTimeout(15000);
             int b1=next();long len=b1&127;if(len==126)len=(next()<<8)|next();else if(len==127){len=0;for(int i=0;i<8;i++)len=(len<<8)|next();}
-            if(len<0||len+message.size()>MAX)throw new IOException("Live update too large.");
+            if(len<0||len+message.size()>MAX)throw new IOException("Actualización en vivo demasiado grande.");
             byte[] mask=(b1&0x80)!=0?exactly(4):null,payload=exactly((int)len);if(mask!=null)for(int i=0;i<payload.length;i++)payload[i]^=mask[i&3];
             int op=b0&15;if(op==8)throw new EOFException();if(op==9){frame(10,payload);continue;}if(op==10)continue;
             message.write(payload);if((b0&0x80)!=0)return new String(message.toByteArray(),SharingTransport.UTF8);

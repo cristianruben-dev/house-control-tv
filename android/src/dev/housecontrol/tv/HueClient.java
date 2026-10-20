@@ -15,17 +15,17 @@ import javax.net.ssl.*;
  * pin, as the upstream HueService), so another device answering at the bridge's address is refused.
  */
 final class HueClient {
-    static final class ButtonNotPressed extends IOException{ButtonNotPressed(){super("Press the round button on the Hue Bridge.");}}
+    static final class ButtonNotPressed extends IOException{ButtonNotPressed(){super("Presiona el botón redondo del Hue Bridge.");}}
     /** Trusts exactly the pinned certificate; without a pin (pairing), remembers the one it saw. */
     static final class Pin implements X509TrustManager {
         final String expected;volatile String seen;
         Pin(String expected){this.expected=expected==null||expected.isEmpty()?null:expected;}
         static String fingerprint(java.security.cert.Certificate c)throws CertificateException{try{return SharingTransport.hex(MessageDigest.getInstance("SHA-256").digest(c.getEncoded()));}catch(NoSuchAlgorithmException e){throw new CertificateException(e);}}
         @Override public void checkServerTrusted(X509Certificate[] chain,String auth)throws CertificateException{
-            if(chain==null||chain.length==0)throw new CertificateException("The bridge sent no certificate.");String f=fingerprint(chain[0]);seen=f;
-            if(expected!=null&&!MessageDigest.isEqual(expected.getBytes(SharingTransport.UTF8),f.getBytes(SharingTransport.UTF8)))throw new CertificateException("This is not the paired Hue Bridge.");
+            if(chain==null||chain.length==0)throw new CertificateException("El bridge no envió ningún certificado.");String f=fingerprint(chain[0]);seen=f;
+            if(expected!=null&&!MessageDigest.isEqual(expected.getBytes(SharingTransport.UTF8),f.getBytes(SharingTransport.UTF8)))throw new CertificateException("Este no es el Hue Bridge vinculado.");
         }
-        @Override public void checkClientTrusted(X509Certificate[] chain,String auth)throws CertificateException{throw new CertificateException("Not a server.");}
+        @Override public void checkClientTrusted(X509Certificate[] chain,String auth)throws CertificateException{throw new CertificateException("No es un servidor.");}
         @Override public X509Certificate[] getAcceptedIssuers(){return new X509Certificate[0];}
     }
     final SecretStore vault;
@@ -36,7 +36,7 @@ final class HueClient {
     volatile Runnable onChange;
     volatile BooleanSupplier active=()->true;
     private Thread listener;private volatile int generation=0;
-    HueClient(SecretStore vault){this.vault=vault;try{config=vault.read();}catch(Exception e){config=null;lastError="Pair the Hue Bridge again.";}if(config!=null)listen();}
+    HueClient(SecretStore vault){this.vault=vault;try{config=vault.read();}catch(Exception e){config=null;lastError="Vuelve a vincular el Hue Bridge.";}if(config!=null)listen();}
     boolean connected(){return config!=null;}
     JSONObject info()throws JSONException{JSONObject c=config;JSONObject out=new JSONObject().put("connected",c!=null).put("lastError",lastError);
         if(c!=null)out.put("host",c.optString("host")).put("name",c.optString("name","Hue Bridge")).put("bridgeId",c.optString("bridgeId")).put("source",c.optString("source","tv"));return out;}
@@ -45,10 +45,10 @@ final class HueClient {
     synchronized void pair(String raw,String bridgeId,String name)throws Exception{
         String host=LocalMapper.hueHost(raw);LocalMapper.requirePrivate(host);Pin pin=new Pin(null);
         JSONObject wanted=new JSONObject().put("devicetype","house_control#TV").put("generateclientkey",true);Object answer;
-        try{answer=call(host,null,pin,"POST","/api",wanted);}catch(SSLException e){throw new IOException("The device at "+host+" is not a Hue Bridge.");}
-        JSONObject first=answer instanceof JSONArray?((JSONArray)answer).optJSONObject(0):null;if(first==null)throw new IOException("The device at "+host+" did not answer like a Hue Bridge.");
-        JSONObject error=first.optJSONObject("error");if(error!=null){if(error.optInt("type")==101)throw new ButtonNotPressed();throw new IOException("The bridge said: "+error.optString("description","error"));}
-        JSONObject success=first.optJSONObject("success");String key=success==null?"":success.optString("username");if(!key.matches("[A-Za-z0-9_-]{8,128}")||pin.seen==null)throw new IOException("The device at "+host+" did not answer like a Hue Bridge.");
+        try{answer=call(host,null,pin,"POST","/api",wanted);}catch(SSLException e){throw new IOException("El aparato en "+host+" no es un Hue Bridge.");}
+        JSONObject first=answer instanceof JSONArray?((JSONArray)answer).optJSONObject(0):null;if(first==null)throw new IOException("El aparato en "+host+" no respondió como un Hue Bridge.");
+        JSONObject error=first.optJSONObject("error");if(error!=null){if(error.optInt("type")==101)throw new ButtonNotPressed();throw new IOException("El bridge dijo: "+error.optString("description","error"));}
+        JSONObject success=first.optJSONObject("success");String key=success==null?"":success.optString("username");if(!key.matches("[A-Za-z0-9_-]{8,128}")||pin.seen==null)throw new IOException("El aparato en "+host+" no respondió como un Hue Bridge.");
         JSONObject next=new JSONObject().put("host",host).put("key",key).put("certificate",pin.seen).put("bridgeId",bridgeId==null?"":bridgeId).put("name",name==null||name.isEmpty()?"Hue Bridge":name).put("source","tv");
         try{JSONArray bridges=data(next,"/clip/v2/resource/bridge"),devices=data(next,"/clip/v2/resource/device");JSONObject bridge=bridges.optJSONObject(0);
             if(bridge!=null){next.put("bridgeId",bridge.optString("bridge_id",next.optString("bridgeId")));for(int i=0;i<devices.length();i++){JSONObject d=devices.getJSONObject(i);JSONArray s=d.optJSONArray("services");if(s!=null)for(int n=0;n<s.length();n++)if(bridge.optString("id").equals(s.getJSONObject(n).optString("rid"))&&d.optJSONObject("metadata")!=null)next.put("name",d.getJSONObject("metadata").optString("name","Hue Bridge"));}}
@@ -60,7 +60,7 @@ final class HueClient {
         JSONObject c=config;if(c!=null&&!"mac".equals(c.optString("source")))return false;
         if(shared==null){if(c==null)return false;disconnect();return true;}
         String host=LocalMapper.hueHost(shared.optString("host")),key=shared.optString("key"),cert=shared.optString("certificate");
-        if(!key.matches("[A-Za-z0-9_-]{8,128}")||!(cert.isEmpty()||cert.matches("[a-f0-9]{64}")))throw new IOException("The Mac shared an invalid Hue pairing.");LocalMapper.requirePrivate(host);
+        if(!key.matches("[A-Za-z0-9_-]{8,128}")||!(cert.isEmpty()||cert.matches("[a-f0-9]{64}")))throw new IOException("La Mac compartió una vinculación de Hue no válida.");LocalMapper.requirePrivate(host);
         if(c!=null&&c.optString("host").equals(host)&&c.optString("key").equals(key)&&c.optString("certificate").equals(cert))return false;
         JSONObject next=new JSONObject().put("host",host).put("key",key).put("certificate",cert).put("bridgeId",shared.optString("bridgeId")).put("name",shared.optString("name","Hue Bridge")).put("source","mac");
         vault.write(next);config=next;lastError="";listen();return true;
@@ -76,9 +76,9 @@ final class HueClient {
         return out;
     }
     void send(String id,JSONObject patch)throws Exception{
-        if(!LocalMapper.hueId(id))throw new IOException("Unknown Hue lamp.");JSONObject body=LocalMapper.hueBody(patch);if(body.length()==0)return;
+        if(!LocalMapper.hueId(id))throw new IOException("Lámpara Hue desconocida.");JSONObject body=LocalMapper.hueBody(patch);if(body.length()==0)return;
         commandAttempts++;Object answer=call(null,config,null,"PUT","/clip/v2/resource/light/"+id,body);
-        JSONArray errors=answer instanceof JSONObject?((JSONObject)answer).optJSONArray("errors"):null;if(errors!=null&&errors.length()>0)throw new IOException("Hue: "+errors.getJSONObject(0).optString("description","the bridge refused the change"));
+        JSONArray errors=answer instanceof JSONObject?((JSONObject)answer).optJSONArray("errors"):null;if(errors!=null&&errors.length()>0)throw new IOException("Hue: "+errors.getJSONObject(0).optString("description","el bridge rechazó el cambio"));
     }
     JSONArray data(JSONObject c,String path)throws Exception{Object a=call(null,c,null,"GET",path,null);JSONArray d=a instanceof JSONObject?((JSONObject)a).optJSONArray("data"):null;return d==null?new JSONArray():d;}
 
@@ -90,19 +90,19 @@ final class HueClient {
     }
     /** `pin` is null for a paired bridge (its saved certificate is required); pairing passes an unpinned one. */
     Object call(String host,JSONObject c,Pin pin,String method,String path,JSONObject body)throws Exception{
-        if(host==null){if(c==null)throw new IOException("Pair a Hue Bridge on this TV first.");host=c.getString("host");pin=new Pin(c.optString("certificate"));}
+        if(host==null){if(c==null)throw new IOException("Primero vincula un Hue Bridge en esta TV.");host=c.getString("host");pin=new Pin(c.optString("certificate"));}
         HttpsURLConnection h=open(host,pin,path,9000);h.setRequestMethod(method);if(c!=null)h.setRequestProperty("hue-application-key",c.getString("key"));
         try{
             if(body!=null){h.setDoOutput(true);h.setRequestProperty("Content-Type","application/json");try(OutputStream o=h.getOutputStream()){o.write(body.toString().getBytes(SharingTransport.UTF8));}}
-            int status=h.getResponseCode();if(c!=null&&(status==401||status==403))throw new IOException("The Hue Bridge no longer accepts this TV’s key. Pair it again.");
+            int status=h.getResponseCode();if(c!=null&&(status==401||status==403))throw new IOException("El Hue Bridge ya no acepta la clave de esta TV. Vuelve a vincularlo.");
             InputStream stream=status<400?h.getInputStream():h.getErrorStream();ByteArrayOutputStream b=new ByteArrayOutputStream();
-            if(stream!=null)try(InputStream in=stream){byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1){b.write(buf,0,n);if(b.size()>4*1024*1024)throw new IOException("The bridge's answer is too large.");}}
+            if(stream!=null)try(InputStream in=stream){byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1){b.write(buf,0,n);if(b.size()>4*1024*1024)throw new IOException("La respuesta del bridge es demasiado grande.");}}
             String text=new String(b.toByteArray(),SharingTransport.UTF8).trim();Object json=text.isEmpty()?null:new JSONTokener(text).nextValue();
-            if(status<200||status>=300){JSONArray e=json instanceof JSONObject?((JSONObject)json).optJSONArray("errors"):null;throw new IOException("Hue: "+(e!=null&&e.length()>0?e.getJSONObject(0).optString("description"):"status "+status));}
+            if(status<200||status>=300){JSONArray e=json instanceof JSONObject?((JSONObject)json).optJSONArray("errors"):null;throw new IOException("Hue: "+(e!=null&&e.length()>0?e.getJSONObject(0).optString("description"):"estado "+status));}
             if(c!=null&&c.optString("certificate").isEmpty()&&pin.seen!=null)remember(c,pin.seen);
             return json;
-        }catch(SSLException e){throw new IOException("The device at "+host+" is not the paired Hue Bridge.");}
-        catch(SocketTimeoutException|ConnectException|NoRouteToHostException e){throw new IOException("The Hue Bridge at "+host+" did not answer.");}
+        }catch(SSLException e){throw new IOException("El aparato en "+host+" no es el Hue Bridge vinculado.");}
+        catch(SocketTimeoutException|ConnectException|NoRouteToHostException e){throw new IOException("El Hue Bridge en "+host+" no respondió.");}
         finally{h.disconnect();}
     }
     /** A pairing shared without a certificate pin is pinned on its first answer. */

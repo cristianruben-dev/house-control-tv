@@ -33,11 +33,11 @@ export async function loadRawConfig() {
   if (boot?.config) return boot.config;
   const plan = (boot?.plan !== 'custom' && boot?.plan) || new URLSearchParams(location.search).get('plan') || 'home';
   const res = await fetch(`./plans/${plan}.json`);
-  if (!res.ok) throw new ConfigError(`Plan "${plan}" not found (HTTP ${res.status})`);
+  if (!res.ok) throw new ConfigError(`No se encontró el plano "${plan}" (HTTP ${res.status})`);
   try {
     return await res.json();
   } catch (e) {
-    throw new ConfigError(`Plan "${plan}" is not valid JSON: ${e.message}`);
+    throw new ConfigError(`El plano "${plan}" no es un JSON válido: ${e.message}`);
   }
 }
 
@@ -52,38 +52,38 @@ function need(cond, msg) {
 const isPoint = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
 
 export function normalize(raw) {
-  need(raw && typeof raw === 'object', 'Plan must be a JSON object');
-  need(Array.isArray(raw.rooms) && raw.rooms.length > 0, 'Plan needs at least one room in "rooms"');
+  need(raw && typeof raw === 'object', 'El plano debe ser un objeto JSON');
+  need(Array.isArray(raw.rooms) && raw.rooms.length > 0, 'El plano necesita al menos un cuarto en "rooms"');
 
   const ids = new Set();
   const unique = (id, what) => {
-    need(typeof id === 'string' && id, `${what} is missing an "id"`);
-    need(!ids.has(id), `Duplicate id "${id}"`);
+    need(typeof id === 'string' && id, `A ${what} le falta un "id"`);
+    need(!ids.has(id), `Id repetido "${id}"`);
     ids.add(id);
   };
 
   const rooms = raw.rooms.map((r) => {
-    unique(r.id, 'A room');
+    unique(r.id, 'un cuarto');
     need(Array.isArray(r.rect) && r.rect.length === 4 && r.rect.every(Number.isFinite),
-      `Room "${r.id}" needs "rect": [x, z, width, depth]`);
+      `El cuarto "${r.id}" necesita "rect": [x, z, ancho, fondo]`);
     const [x, z, w, d] = r.rect;
-    need(w > 0 && d > 0, `Room "${r.id}" has an empty rect`);
+    need(w > 0 && d > 0, `El cuarto "${r.id}" tiene un rect vacío`);
     // `wall` optionally paints (or tiles) the inner faces of the room's walls, e.g. "#3f7fc1".
     return { id: r.id, name: r.name || r.id, x, z, w, d, floor: r.floor || 'oak', wall: typeof r.wall === 'string' ? r.wall : null };
   });
   const roomIds = new Set(rooms.map((r) => r.id));
 
   const openings = (raw.openings || []).map((o, i) => {
-    need(isPoint(o.from) && isPoint(o.to), `Opening #${i + 1} needs "from" and "to" points`);
-    need(o.from[0] === o.to[0] || o.from[1] === o.to[1], `Opening #${i + 1} must be axis-aligned`);
+    need(isPoint(o.from) && isPoint(o.to), `La abertura #${i + 1} necesita los puntos "from" y "to"`);
+    need(o.from[0] === o.to[0] || o.from[1] === o.to[1], `La abertura #${i + 1} debe ir alineada a los ejes`);
     return { type: o.type || 'door', from: o.from, to: o.to, sill: o.sill ?? 0.85, head: o.head ?? 2.1 };
   });
 
   const lights = (raw.lights || []).map((l) => {
-    unique(l.id, 'A light');
-    need(roomIds.has(l.room), `Light "${l.id}" refers to unknown room "${l.room}"`);
-    need(LIGHT_TYPES.includes(l.type), `Light "${l.id}" has unknown type "${l.type}" (use ${LIGHT_TYPES.join(', ')})`);
-    need(isPoint(l.pos), `Light "${l.id}" needs "pos": [x, z]`);
+    unique(l.id, 'una luz');
+    need(roomIds.has(l.room), `La luz "${l.id}" apunta al cuarto desconocido "${l.room}"`);
+    need(LIGHT_TYPES.includes(l.type), `La luz "${l.id}" tiene el tipo desconocido "${l.type}" (usa ${LIGHT_TYPES.join(', ')})`);
+    need(isPoint(l.pos), `La luz "${l.id}" necesita "pos": [x, z]`);
     return {
       ...l,
       name: l.name || l.id,
@@ -93,15 +93,15 @@ export function normalize(raw) {
   });
 
   const acs = (raw.acs || []).map((a) => {
-    unique(a.id, 'An AC');
-    need(roomIds.has(a.room), `AC "${a.id}" refers to unknown room "${a.room}"`);
-    need(isPoint(a.pos), `AC "${a.id}" needs "pos": [x, z]`);
-    need(WALLS.includes(a.wall), `AC "${a.id}" needs "wall": one of ${WALLS.join(', ')}`);
+    unique(a.id, 'un aire');
+    need(roomIds.has(a.room), `El aire "${a.id}" apunta al cuarto desconocido "${a.room}"`);
+    need(isPoint(a.pos), `El aire "${a.id}" necesita "pos": [x, z]`);
+    need(WALLS.includes(a.wall), `El aire "${a.id}" necesita "wall": una de ${WALLS.join(', ')}`);
     return { ...a, name: a.name || a.id, y: a.y ?? 2.2, min: a.min ?? 16, max: a.max ?? 30 };
   });
 
   const scenes = (raw.scenes || []).map((s) => {
-    need(typeof s.id === 'string' && s.id, 'A scene is missing an "id"');
+    need(typeof s.id === 'string' && s.id, 'A una escena le falta un "id"');
     return { id: s.id, name: s.name || s.id, icon: s.icon || 'sun', lights: s.lights || {}, acs: s.acs || {} };
   });
 
@@ -111,7 +111,7 @@ export function normalize(raw) {
   const maxZ = Math.max(...rooms.map((r) => r.z + r.d));
 
   return {
-    name: raw.name || 'Home',
+    name: raw.name || 'Casa',
     wallHeight: raw.wallHeight ?? 2.6,
     interiorWallHeight: raw.interiorWallHeight ?? 1.25,
     camera: { azimuth: raw.camera?.azimuth ?? 34, elevation: raw.camera?.elevation ?? 47 },

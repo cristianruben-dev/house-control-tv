@@ -10,7 +10,7 @@ let sessionPromise = null;
 async function ensureSession() {
   if (native || token || !['localhost', '127.0.0.1'].includes(location.hostname)) return;
   if (!sessionPromise) sessionPromise = fetch('/api/local-session', { signal: AbortSignal.timeout(4000) })
-    .then(async response => { if (!response.ok) throw new Error('Start TV Bridge on your Mac.'); const data = await response.json(); token = data.token || ''; })
+    .then(async response => { if (!response.ok) throw new Error('Abre TV Bridge en tu Mac.'); const data = await response.json(); token = data.token || ''; })
     .finally(() => { sessionPromise = null; });
   await sessionPromise;
 }
@@ -24,7 +24,7 @@ window.__tvReply = (id, response) => {
 export async function api(path, body) {
   if (native) return new Promise((resolve, reject) => {
     const id = ++counter;
-    const timer = setTimeout(() => { pending.delete(id); reject(new Error('The TV is still waiting for the device service. Try again.')); }, 65000);
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error('La TV sigue esperando al servicio de dispositivos. Inténtalo de nuevo.')); }, 65000);
     pending.set(id, { resolve, reject, timer });
     native.request(id, path, body ? JSON.stringify(body) : '');
   });
@@ -34,7 +34,7 @@ export async function api(path, body) {
     body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(body ? 65000 : 9000),
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Could not connect to your home.');
+  if (!response.ok) throw new Error(data.error || 'No se pudo conectar con tu casa.');
   return data;
 }
 export function remoteURL(endpoint) {

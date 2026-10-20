@@ -58,7 +58,7 @@ function button(label, name, action, cls = '') {
   const b = el('button', cls); b.type = 'button'; b.setAttribute('aria-label', label);
   if (name) b.append(icon(name)); if (label) b.append(el('span', '', label)); b.onclick = action; return b;
 }
-const modes = { cool: 'Cooling', heat: 'Heating', auto: 'Auto', dry: 'Dry', fan: 'Fan' };
+const modes = { cool: 'Enfriando', heat: 'Calentando', auto: 'Automático', dry: 'Secado', fan: 'Ventilador' };
 let config, bundle, world, resizeObserver, deviceKind = 'lights', room = 'all', online = false, busy = false, orbiting = false, modal = null, lastFocus = null;
 let store = { state: { lights: {}, acs: {}, scene: null }, listeners: new Set(), on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); } };
 let lightNodes = new Map(), acNodes = new Map(), sceneNodes = new Map();
@@ -76,11 +76,11 @@ function apply(next) {
 function available() { return online; }
 async function command(action) {
   if (busy) return;
-  if (!available()) { toast(bundle?.mode === 'standalone' ? (bundle.connectionLabel || 'Connect your devices') + ' in Sync & connect.' : 'Open House Control and TV Bridge on your Mac to control devices.'); return; }
+  if (!available()) { toast(bundle?.mode === 'standalone' ? (bundle.connectionLabel || 'Conecta tus dispositivos') + ' en Sincronizar y conectar.' : 'Abre House Control y TV Bridge en tu Mac para controlar los dispositivos.'); return; }
   busy = true; app.classList.add('pending');
   try {
     const result = await api('/api/action', action); apply(result.home);
-    toast(result.direct ? (action.kind === 'acTarget' ? 'Temperature saved on TV' : 'Device settings updated directly') : 'Command sent to House Control');
+    toast(result.direct ? (action.kind === 'acTarget' ? 'Temperatura guardada en la TV' : 'Dispositivo actualizado directamente') : 'Orden enviada a House Control');
   } catch (error) { toast(error.message); }
   finally { busy = false; app.classList.remove('pending'); }
 }
@@ -95,7 +95,7 @@ function renderDevices() {
   // This TV only switches lights (no climate), grouped in one section per room, in the plan's room order.
   const lights = config.lights.filter(d => room === 'all' || d.room === room);
   $('#device-count').textContent = String(lights.length);
-  if (!lights.length) list.append(el('p', 'empty', 'No lights in this room.'));
+  if (!lights.length) list.append(el('p', 'empty', 'No hay luces en este cuarto.'));
   for (const r of config.rooms) {
     const inRoom = lights.filter(d => d.room === r.id);
     if (!inRoom.length) continue;
@@ -104,7 +104,7 @@ function renderDevices() {
     for (const d of inRoom) grid.append(lightTile(d));
   }
 }
-/** A light as a tile in its room's 3-column grid: the lit tile shows the state, so no On/Off text or switch. */
+/** A light as a tile in its room's 3-column grid: the lit tile shows the state, so no on/off text or switch. */
 function lightTile(d) {
   const b = el('button', 'light-row'); b.type = 'button';
   const lamp = el('span', 'light-icon'); lamp.append(icon('Lightbulb'));
@@ -119,15 +119,15 @@ function lightTile(d) {
 function update() {
   if (!config || !$('#status')) return;
   const on = Object.values(store.state.lights).filter(s => s.on).length;
-  $('#status').textContent = bundle?.mode === 'standalone' ? (bundle.connectionLabel || (online ? 'TV connected' : 'Connect your devices on TV')) : online ? 'Synced with Mac' : 'Mac offline · view only';
+  $('#status').textContent = bundle?.mode === 'standalone' ? (bundle.connectionLabel || (online ? 'TV conectada' : 'Conecta tus dispositivos en la TV')) : online ? 'Sincronizado con la Mac' : 'Mac sin conexión · solo ver';
   $('#status').classList.toggle('offline', !online);
   $('#lights-on').textContent = on;
-  $('#lights-total').textContent = 'of ' + config.lights.length + ' on';
-  $('#active-scene').textContent = config.scenes.find(s => s.id === store.state.scene)?.name || 'Manual control';
+  $('#lights-total').textContent = 'de ' + config.lights.length + ' encendidas';
+  $('#active-scene').textContent = config.scenes.find(s => s.id === store.state.scene)?.name || 'Control manual';
   for (const [id, n] of lightNodes) {
     const s = store.state.lights[id]; if (!s) continue;
     n.b.classList.toggle('on', s.on); n.b.setAttribute('aria-pressed', String(s.on));
-    n.b.setAttribute('aria-label', `${config.lights.find(d=>d.id===id).name}, ${s.on ? 'on' : 'off'}`);
+    n.b.setAttribute('aria-label', `${config.lights.find(d=>d.id===id).name}, ${s.on ? 'encendida' : 'apagada'}`);
     n.b.disabled = !available();
   }
   for (const [id, n] of acNodes) {
@@ -135,8 +135,8 @@ function update() {
     const d = config.acs.find(d => d.id === id);
     n.card.classList.toggle('on', s.on); n.power.setAttribute('aria-pressed', String(s.on));
     n.target.replaceChildren(document.createTextNode(s.target), el('span', '', '°'));
-    n.mode.textContent = s.on ? modes[s.mode] || s.mode : 'Off';
-    n.current.textContent = Number.isFinite(s.roomTemp) ? `${Math.round(s.roomTemp * 10) / 10}° in room` : 'No sensor';
+    n.mode.textContent = s.on ? modes[s.mode] || s.mode : 'Apagado';
+    n.current.textContent = Number.isFinite(s.roomTemp) ? `${Math.round(s.roomTemp * 10) / 10}° en el cuarto` : 'Sin sensor';
     n.power.disabled = !available(); n.minus.disabled = !available() || s.target <= d.min; n.plus.disabled = !available() || s.target >= d.max;
   }
   for (const [id, b] of sceneNodes) { b.classList.toggle('active', id === store.state.scene); b.setAttribute('aria-pressed', id === store.state.scene); b.disabled = !available(); }
@@ -148,30 +148,30 @@ function render() {
   const header = el('header');
   const connection = el('div','connection'); const status = el('span'); status.id='status';
   const clock = el('time'); clock.id='clock';
-  connection.append(status, clock, button('Settings', 'Settings2', ()=>openSettings(), 'settings-button'), button('Sync & connect', 'Smartphone', openSync, 'sync-button'));
+  connection.append(status, clock, button('Ajustes', 'Settings2', ()=>openSettings(), 'settings-button'), button('Sincronizar y conectar', 'Smartphone', openSync, 'sync-button'));
   header.append(connection);
-  const tabs = el('nav','rooms'); tabs.setAttribute('aria-label','Rooms');
-  for (const r of [{id:'all',name:'Whole home'}, ...config.rooms]) {
+  const tabs = el('nav','rooms'); tabs.setAttribute('aria-label','Cuartos');
+  for (const r of [{id:'all',name:'Toda la casa'}, ...config.rooms]) {
     const b = button(r.name, r.id==='all'?'House':null,()=>selectRoom(r.id),'room-tab'); b.dataset.room=r.id; b.classList.toggle('selected',r.id===room); b.setAttribute('aria-pressed',r.id===room); tabs.append(b);
   }
   const layout = el('main','layout');
   const stage = el('section','stage');
   const homeName = el('div','home-name',config.name);
-  const canvas = el('canvas'); canvas.id='world'; canvas.setAttribute('aria-label','Interactive 3D home model');
+  const canvas = el('canvas'); canvas.id='world'; canvas.setAttribute('aria-label','Modelo 3D interactivo de la casa');
   const stats = el('div','stats');
   const lightStat=el('div'); const on=el('strong'); on.id='lights-on'; const total=el('small'); total.id='lights-total'; lightStat.append(icon('Lightbulb'),on,total);
-  const sceneStat=el('div'); const sc=el('strong'); sc.id='active-scene'; sceneStat.append(icon('Sofa'),sc,el('small','','Current scene'));
+  const sceneStat=el('div'); const sc=el('strong'); sc.id='active-scene'; sceneStat.append(icon('Sofa'),sc,el('small','','Escena actual'));
   stats.append(lightStat,sceneStat);
   stage.append(canvas,homeName,stats);
-  const aside = el('aside','controls'); const heading=el('div','controls-heading'); const count=el('span');count.id='device-count';heading.append(el('h2','','Devices'),count);
-  const off=button('Lights off','Power',()=>command({kind:room==='all'?'allLights':'room',...(room==='all'?{}:{id:room}),on:false}),'all-off'); off.id='all-off';
+  const aside = el('aside','controls'); const heading=el('div','controls-heading'); const count=el('span');count.id='device-count';heading.append(el('h2','','Luces'),count);
+  const off=button('Apagar luces','Power',()=>command({kind:room==='all'?'allLights':'room',...(room==='all'?{}:{id:room}),on:false}),'all-off'); off.id='all-off';
   const list=el('div','device-list'); list.id='device-list'; aside.append(heading,off,list);
   // Scenes: their own card between the model and the lights, in columns of four (up to two columns).
   const scenes=el('section','scenes'); const sceneHeading=el('div','controls-heading'); const sceneCount=el('span',''); sceneCount.textContent=String(Math.min(8,config.scenes.length));
-  sceneHeading.append(el('h2','','Scenes'),sceneCount);
+  sceneHeading.append(el('h2','','Escenas'),sceneCount);
   const sceneList=el('div','scene-list');
   for (const s of config.scenes.slice(0,8)) { const b=button(s.name,sceneIcon(s),()=>command({kind:'scene',id:s.id}),'scene-button'); sceneList.append(b);sceneNodes.set(s.id,b); }
-  if (!config.scenes.length) sceneList.append(el('p','empty','Add scenes in House Control on your Mac.'));
+  if (!config.scenes.length) sceneList.append(el('p','empty','Agrega escenas en House Control en tu Mac.'));
   scenes.append(sceneHeading,sceneList);
   layout.append(stage,scenes,aside);
   const toastNode=el('div','toast');toastNode.id='toast';toastNode.setAttribute('role','status');
@@ -182,11 +182,11 @@ function render() {
     world.setInsets(24,38);world.setRunning(true);world.intro();
     setTimeout(()=>console.info('TV_RENDER_STATS',JSON.stringify(world?.stats())),6000);
     resizeObserver?.disconnect(); resizeObserver=new ResizeObserver(()=>world?.resize()); resizeObserver.observe(canvas);
-  } catch(error) { stage.append(el('div','render-error','3D is unavailable on this device. You can still use the controls on the right.')); console.error(error); }
+  } catch(error) { stage.append(el('div','render-error','El 3D no está disponible en este dispositivo. Puedes seguir usando los controles de la derecha.')); console.error(error); }
   requestAnimationFrame(()=>tabs.querySelector('button').focus({preventScroll:true}));
   window.__houseTV={get config(){return config;},get state(){return store.state;},get online(){return online;},get world(){return world;},command,selectRoom};
 }
-function tickClock(){if($('#clock'))$('#clock').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+function tickClock(){if($('#clock'))$('#clock').textContent=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});}
 setInterval(tickClock,15000);
 let modalCleanup = null;
 function closeModal(){modalCleanup?.();modalCleanup=null;modal?.remove();modal=null;lastFocus?.focus();}
@@ -196,10 +196,10 @@ function closeModal(){modalCleanup?.();modalCleanup=null;modal?.remove();modal=n
  */
 function openSettings(start='theme'){
   if(modal)closeModal();
-  lastFocus=document.activeElement;modal=el('div','modal-backdrop settings-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-label','Settings');
+  lastFocus=document.activeElement;modal=el('div','modal-backdrop settings-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-label','Ajustes');
   const panel=el('section','settings-panel'),side=el('nav','settings-side'),content=el('div','settings-content');
-  side.append(el('h2','','Settings'));
-  const sections={theme:['Theme','SunMoon'],glass:['Glass','Layers'],wallpaper:['Wallpaper','Image']};
+  side.append(el('h2','','Ajustes'));
+  const sections={theme:['Tema','SunMoon'],glass:['Vidrio','Layers'],wallpaper:['Fondo','Image']};
   const tabs={};let current=null;
   for(const [key,[label,name]] of Object.entries(sections)){
     const b=button(label,name,()=>firstOption()?.focus(),'settings-section');b.dataset.section=key;tabs[key]=b;side.append(b);
@@ -212,15 +212,15 @@ function openSettings(start='theme'){
     for(const b of Object.values(tabs))b.classList.toggle('active',b.dataset.section===key);
     content.replaceChildren(el('h3','',sections[key][0]));
     if(key==='theme'){
-      content.append(el('p','settings-hint','Dark mode: dark glass and white text. Light mode: white glass and dark text.'));
-      for(const [mode,label] of [['dark','Dark'],['light','Light']]){const b=button(label,null,()=>setAppearance({...appearance,mode}),'settings-row option');b.dataset.theme=mode;content.append(b);}
+      content.append(el('p','settings-hint','Modo oscuro: vidrio oscuro y texto blanco. Modo claro: vidrio blanco y texto oscuro.'));
+      for(const [mode,label] of [['dark','Oscuro'],['light','Claro']]){const b=button(label,null,()=>setAppearance({...appearance,mode}),'settings-row option');b.dataset.theme=mode;content.append(b);}
     }else if(key==='glass'){
-      content.append(el('p','settings-hint','How much the glass tints the wallpaper behind it. Left and right change it; light mode keeps at least 40 % so its dark text reads.'));
-      const slider=el('button','settings-row opacity-row');slider.type='button';slider.setAttribute('aria-label','Glass opacity');
+      content.append(el('p','settings-hint','Cuánto tiñe el vidrio el fondo de pantalla. Izquierda y derecha lo cambian; el modo claro deja al menos 40 % para que su texto oscuro se lea.'));
+      const slider=el('button','settings-row opacity-row');slider.type='button';slider.setAttribute('aria-label','Opacidad del vidrio');
       const value=el('span','opacity-value'),bar=el('span','opacity-bar'),fill=el('i');bar.append(fill);
-      slider.append(el('span','','Opacity'),value,bar);content.append(slider);
+      slider.append(el('span','','Opacidad'),value,bar);content.append(slider);
     }else{
-      content.append(el('p','settings-hint','The same pictures as the home screen. Each one brings the theme and opacity that suit it.'));
+      content.append(el('p','settings-hint','Las mismas imágenes que la pantalla de inicio. Cada una trae el tema y la opacidad que mejor le quedan.'));
       const grid=el('div','wallpaper-grid');
       for(const name of WALLPAPER_NAMES){
         const b=el('button','wallpaper-tile');b.type='button';b.dataset.wallpaper=name;
@@ -247,20 +247,20 @@ function openSettings(start='theme'){
 }
 async function openSync(){
   if (nativeConfig?.mode === 'standalone' || bundle?.mode === 'standalone') return openStandaloneSync();
-  lastFocus=document.activeElement;modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Sync & connect');
-  const panel=el('section','sync-panel'); const close=button('Back to home','ArrowLeft',closeModal,'back-button');
-  panel.append(close,el('p','eyebrow','YOUR HOME. EVERY SCREEN.'),el('h2','','One home. Always in sync.'),el('p','sync-description','Your floor plan, scenes and device states come from House Control on your Mac. Changes in the app appear here automatically.'));
+  lastFocus=document.activeElement;modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Sincronizar y conectar');
+  const panel=el('section','sync-panel'); const close=button('Volver al inicio','ArrowLeft',closeModal,'back-button');
+  panel.append(close,el('p','eyebrow','TU CASA. EN CADA PANTALLA.'),el('h2','','Una casa. Siempre sincronizada.'),el('p','sync-description','Tu plano, escenas y estados de los dispositivos vienen de House Control en tu Mac. Los cambios en la app aparecen aquí solos.'));
   const content=el('div','sync-content');const qr=el('canvas','qr');
-  const text=el('div');text.append(el('h3','','Open on your iPhone'),el('p','','Scan with your camera to control this same home from your phone over Wi-Fi.'),el('p','sync-note','To sync settings from the iPhone app, pair it with your Mac in House Control → Pair iPhone. Keep House Control and TV Bridge running on your Mac.'));
+  const text=el('div');text.append(el('h3','','Ábrela en tu iPhone'),el('p','','Escanea con la cámara para controlar esta misma casa desde tu teléfono por Wi-Fi.'),el('p','sync-note','Para sincronizar los ajustes desde la app del iPhone, vincúlalo con tu Mac en House Control → Vincular iPhone. Deja House Control y TV Bridge abiertos en tu Mac.'));
   if(nativeConfig?.endpoint || !nativeConfig){content.append(qr,text);QRCode.toCanvas(qr,remoteURL(bundle?.endpoint),{width:220,margin:2,errorCorrectionLevel:'M',color:{dark:'#0a0e1a',light:'#ffffff'}}).catch(()=>qr.remove());}
-  else text.append(el('p','','Connect your TV by running ./house-tv/deploy.py on your Mac.'));
-  panel.append(content,el('div','sync-state',online?'Connected to Mac · refreshes every 2 seconds':'Mac is offline. Showing your last saved home.'));
+  else text.append(el('p','','Conecta tu TV ejecutando ./house-tv/deploy.py en tu Mac.'));
+  panel.append(content,el('div','sync-state',online?'Conectada a la Mac · se actualiza cada 2 segundos':'La Mac está sin conexión. Se muestra tu última casa guardada.'));
   modal.append(panel);document.body.append(modal);close.focus();
 }
 async function openStandaloneSync() {
   if (modal) closeModal();
-  lastFocus=document.activeElement;modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','TV connections');
-  const panel=el('section','sync-panel');const close=button('Back to home','ArrowLeft',closeModal,'back-button');
+  lastFocus=document.activeElement;modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Conexiones de la TV');
+  const panel=el('section','sync-panel');const close=button('Volver al inicio','ArrowLeft',closeModal,'back-button');
   const content=el('div','standalone-content');panel.append(close,content);modal.append(panel);document.body.append(modal);close.focus();
   const owner=modal;let timer=0;modalCleanup=()=>clearTimeout(timer);
   const alive=()=>modal===owner;let pages=0;
@@ -271,59 +271,59 @@ async function openStandaloneSync() {
     try { status=await api('/api/connections'); } catch(error) {content.append(el('p','setup-error',error.message));return;}
     if(!alive()||pages!==page)return;
     const ha=status.homeassistant,hue=status.hue,connected=[ha.connected&&'Home Assistant',hue.connected&&'Hue'].filter(Boolean);
-    content.append(el('p','eyebrow','YOUR TV. YOUR HOME.'),el('h2','',connected.length?'Ready without your Mac':'Connect your devices to this TV'),el('p','sync-description',connected.length?'Your TV stores this home and sends commands directly to your devices. Your Mac can be off.':'Connect Home Assistant or pair a Philips Hue Bridge. The TV talks to them directly on your Wi-Fi.'));
-    content.append(el('div','sync-state',connected.length?connected.join(' · ')+' connected · credentials stored on this TV':'No hub connected yet'));
-    const remote=el('div','sync-content');const qr=el('canvas','qr');const text=el('div');text.append(el('h3','','Control from your phone'),el('p','','Scan this private link with your camera. Your phone connects directly to this TV on Wi-Fi. Keep the TV awake with House Control or Luma open.'),el('p','sync-note','Settings sync automatically from your paired Mac when it is awake. Your TV keeps its own device state and works when the Mac is off. You can also import a floor plan JSON from your phone.'));
+    content.append(el('p','eyebrow','TU TV. TU CASA.'),el('h2','',connected.length?'Lista sin tu Mac':'Conecta tus dispositivos a esta TV'),el('p','sync-description',connected.length?'Tu TV guarda esta casa y manda las órdenes directo a tus dispositivos. Tu Mac puede estar apagada.':'Conecta Home Assistant o vincula un Hue Bridge de Philips. La TV habla con ellos directo por tu Wi-Fi.'));
+    content.append(el('div','sync-state',connected.length?connected.join(' · ')+' conectado · credenciales guardadas en esta TV':'Todavía no hay ningún hub conectado'));
+    const remote=el('div','sync-content');const qr=el('canvas','qr');const text=el('div');text.append(el('h3','','Controla desde tu teléfono'),el('p','','Escanea este enlace privado con la cámara. Tu teléfono se conecta directo a esta TV por Wi-Fi. Mantén la TV despierta con House Control o Luma abierta.'),el('p','sync-note','Los ajustes se sincronizan solos desde tu Mac vinculada cuando está despierta. Tu TV guarda el estado de sus dispositivos y funciona con la Mac apagada. También puedes importar un plano JSON desde tu teléfono.'));
     remote.append(qr,text);content.append(remote);QRCode.toCanvas(qr,remoteURL(bundle?.endpoint),{width:260,margin:2,color:{dark:'#0a0e1a',light:'#ffffff'}}).catch(()=>qr.remove());
-    const file=el('input','plan-file');file.type='file';file.accept='.json,application/json';file.setAttribute('aria-label','Import House Control floor plan');
-    file.onchange=async()=>{if(!file.files?.[0])return;try{const data=JSON.parse(await file.files[0].text());await api('/api/import',data);toast('Floor plan saved on TV');closeModal();}catch(error){message.textContent=error.message;}};
-    const importRow=el('div','import-row');importRow.append(el('span','','Import floor plan JSON'),file);if(!nativeConfig)content.append(importRow);content.append(message);
-    content.append(button('Home Assistant & Hue','Wifi',showServices,connected.length?'secondary':'primary'));
+    const file=el('input','plan-file');file.type='file';file.accept='.json,application/json';file.setAttribute('aria-label','Importar plano de House Control');
+    file.onchange=async()=>{if(!file.files?.[0])return;try{const data=JSON.parse(await file.files[0].text());await api('/api/import',data);toast('Plano guardado en la TV');closeModal();}catch(error){message.textContent=error.message;}};
+    const importRow=el('div','import-row');importRow.append(el('span','','Importar plano JSON'),file);if(!nativeConfig)content.append(importRow);content.append(message);
+    content.append(button('Home Assistant y Hue','Wifi',showServices,connected.length?'secondary':'primary'));
     // Coming back from the hubs page the focused button is gone: land on the hubs button again.
     if(!modal.contains(document.activeElement))content.querySelector('button')?.focus();
   }
   async function showServices() {
     // A search still running when this page is left must not draw it again.
     const page=++pages,alive=()=>modal===owner&&pages===page;
-    clearTimeout(timer);content.replaceChildren(el('h2','','Looking for your hubs…'));owner.back=showHome;
+    clearTimeout(timer);content.replaceChildren(el('h2','','Buscando tus hubs…'));owner.back=showHome;
     let status,found={homeassistant:[],hue:[]};
-    try{status=await api('/api/connections');}catch(error){content.replaceChildren(el('p','setup-error',error.message),button('Back','ArrowLeft',showHome,'secondary'));return;}
+    try{status=await api('/api/connections');}catch(error){content.replaceChildren(el('p','setup-error',error.message),button('Atrás','ArrowLeft',showHome,'secondary'));return;}
     if(!alive())return;
     const render=()=>{
       const note=el('p','sync-note');note.setAttribute('role','status');
-      content.replaceChildren(el('p','eyebrow','LOCAL HUBS · NO MAC NEEDED'),el('h2','','Home Assistant & Philips Hue'),el('p','sync-description','The TV talks to them directly on your Wi-Fi. Credentials are encrypted on this TV. Apple Home is iPhone-only; add HomeKit or Matter devices to Home Assistant to switch them here.'));
+      content.replaceChildren(el('p','eyebrow','HUBS LOCALES · SIN MAC'),el('h2','','Home Assistant y Philips Hue'),el('p','sync-description','La TV habla con ellos directo por tu Wi-Fi. Las credenciales se cifran en esta TV. Apple Home solo funciona en iPhone; agrega los dispositivos HomeKit o Matter a Home Assistant para controlarlos aquí.'));
       const ha=status.homeassistant,hue=status.hue;
       content.append(el('h3','',ha.connected?`Home Assistant · ${ha.name}`:'Home Assistant'));
-      if(ha.connected){content.append(el('div','sync-state',`Connected to ${ha.url}${ha.source==='mac'?' · from your Mac':''}${ha.lastError?' · '+ha.lastError:''}`),button('Disconnect Home Assistant','Power',async()=>{status=await api('/api/homeassistant/disconnect',{});render();},'secondary'));}
+      if(ha.connected){content.append(el('div','sync-state',`Conectado a ${ha.url}${ha.source==='mac'?' · desde tu Mac':''}${ha.lastError?' · '+ha.lastError:''}`),button('Desconectar Home Assistant','Power',async()=>{status=await api('/api/homeassistant/disconnect',{});render();},'secondary'));}
       else{
-        const form=el('div','login-form');const urlLabel=el('label','','Server address');urlLabel.htmlFor='ha-url';const url=el('input');url.id='ha-url';url.placeholder='http://192.168.1.20:8123';url.value=found.homeassistant[0]?.url||'';url.autocomplete='off';url.spellcheck=false;
-        const tokenLabel=el('label','','Long-lived access token');tokenLabel.htmlFor='ha-token';const token=el('input');token.id='ha-token';token.type='password';token.autocomplete='off';token.placeholder='Profile → Security → Long-lived access tokens';
-        const connect=button('Connect','Check',async()=>{connect.disabled=true;note.textContent='Checking…';try{status=await api('/api/homeassistant/connect',{url:url.value,token:token.value});toast('Home Assistant connected to your TV');render();}catch(error){note.textContent=error.message;connect.disabled=false;}},'primary');
+        const form=el('div','login-form');const urlLabel=el('label','','Dirección del servidor');urlLabel.htmlFor='ha-url';const url=el('input');url.id='ha-url';url.placeholder='http://192.168.1.20:8123';url.value=found.homeassistant[0]?.url||'';url.autocomplete='off';url.spellcheck=false;
+        const tokenLabel=el('label','','Token de acceso de larga duración');tokenLabel.htmlFor='ha-token';const token=el('input');token.id='ha-token';token.type='password';token.autocomplete='off';token.placeholder='Perfil → Seguridad → Tokens de acceso de larga duración';
+        const connect=button('Conectar','Check',async()=>{connect.disabled=true;note.textContent='Comprobando…';try{status=await api('/api/homeassistant/connect',{url:url.value,token:token.value});toast('Home Assistant conectado a tu TV');render();}catch(error){note.textContent=error.message;connect.disabled=false;}},'primary');
         form.append(urlLabel,url,el('span'),tokenLabel,token,connect);content.append(form);
-        for(const s of found.homeassistant)content.append(button(`Use ${s.name}`,'Wifi',()=>{url.value=s.url;token.focus();},'secondary'));
-        content.append(el('p','sync-note',nativeConfig?'Typing a token with the remote is slow: open the private phone link from Sync & connect and paste it there.':'Paste the token here; it goes straight to the TV and stays there.'));
+        for(const s of found.homeassistant)content.append(button(`Usar ${s.name}`,'Wifi',()=>{url.value=s.url;token.focus();},'secondary'));
+        content.append(el('p','sync-note',nativeConfig?'Escribir un token con el control es lento: abre el enlace privado en tu teléfono desde Sincronizar y conectar y pégalo ahí.':'Pega el token aquí; va directo a la TV y se queda ahí.'));
       }
       content.append(el('h3','',hue.connected?`Philips Hue · ${hue.name}`:'Philips Hue'));
-      if(hue.connected){content.append(el('div','sync-state',`Paired with ${hue.host}${hue.source==='mac'?' · from your Mac':''}${hue.lastError?' · '+hue.lastError:''}`),button('Forget Hue Bridge','Power',async()=>{status=await api('/api/hue/disconnect',{});render();},'secondary'));}
+      if(hue.connected){content.append(el('div','sync-state',`Vinculado con ${hue.host}${hue.source==='mac'?' · desde tu Mac':''}${hue.lastError?' · '+hue.lastError:''}`),button('Olvidar Hue Bridge','Power',async()=>{status=await api('/api/hue/disconnect',{});render();},'secondary'));}
       else{
-        const form=el('div','login-form');const hostLabel=el('label','','Bridge address');hostLabel.htmlFor='hue-host';const host=el('input');host.id='hue-host';host.placeholder='192.168.1.30';host.value=found.hue[0]?.host||'';host.autocomplete='off';host.spellcheck=false;
-        const pair=button('Pair','Lightbulb',()=>pairHue({host:host.value,bridgeId:found.hue.find(b=>b.host===host.value)?.bridgeId||'',name:found.hue.find(b=>b.host===host.value)?.name||''},note),'primary');
+        const form=el('div','login-form');const hostLabel=el('label','','Dirección del bridge');hostLabel.htmlFor='hue-host';const host=el('input');host.id='hue-host';host.placeholder='192.168.1.30';host.value=found.hue[0]?.host||'';host.autocomplete='off';host.spellcheck=false;
+        const pair=button('Vincular','Lightbulb',()=>pairHue({host:host.value,bridgeId:found.hue.find(b=>b.host===host.value)?.bridgeId||'',name:found.hue.find(b=>b.host===host.value)?.name||''},note),'primary');
         form.append(hostLabel,host,pair);content.append(form);
-        for(const b of found.hue)content.append(button(`Pair ${b.name}`,'Lightbulb',()=>pairHue(b,note),'secondary'));
-        content.append(el('p','sync-note','Pair, then press the round button on top of the bridge within a minute. The bridge’s certificate is remembered so another device at its address is refused.'));
+        for(const b of found.hue)content.append(button(`Vincular ${b.name}`,'Lightbulb',()=>pairHue(b,note),'secondary'));
+        content.append(el('p','sync-note','Elige Vincular y luego presiona el botón redondo encima del bridge antes de un minuto. Se recuerda el certificado del bridge, así que se rechaza otro aparato en su dirección.'));
       }
-      content.append(note,button('Search the network again','RefreshCw',discover,'secondary'),button('Back','ArrowLeft',showHome,'secondary'));
+      content.append(note,button('Buscar de nuevo en la red','RefreshCw',discover,'secondary'),button('Atrás','ArrowLeft',showHome,'secondary'));
       // A button, not a text field: focusing a field brings up the TV's on-screen keyboard over the page.
       if(!modal.contains(document.activeElement))content.querySelector('button')?.focus();
     };
     async function pairHue(bridge,note){
-      const started=Date.now();note.textContent='Press the round button on the Hue Bridge…';
+      const started=Date.now();note.textContent='Presiona el botón redondo del Hue Bridge…';
       while(alive()&&Date.now()-started<60000){
-        try{const result=await api('/api/hue/pair',{host:bridge.host,bridgeId:bridge.bridgeId||'',name:bridge.name||''});if(!alive())return;if(!result.buttonRequired){status=result;toast('Hue Bridge paired with your TV');render();return;}}
+        try{const result=await api('/api/hue/pair',{host:bridge.host,bridgeId:bridge.bridgeId||'',name:bridge.name||''});if(!alive())return;if(!result.buttonRequired){status=result;toast('Hue Bridge vinculado con tu TV');render();return;}}
         catch(error){if(alive())note.textContent=error.message;return;}
         await new Promise(r=>{timer=setTimeout(r,2000);});
       }
-      if(alive())note.textContent='The button was not pressed in time. Choose Pair to try again.';
+      if(alive())note.textContent='No se presionó el botón a tiempo. Elige Vincular para intentarlo de nuevo.';
     }
     async function discover(){try{found=await api('/api/connections/discover',{});}catch{}if(alive())render();}
     render();if(!status.homeassistant.connected||!status.hue.connected)discover();
@@ -443,12 +443,12 @@ if(nativeConfig){
 }
 document.addEventListener('visibilitychange',()=>world?.setRunning(!document.hidden));
 function showSetup(error){
-  app.replaceChildren();const box=el('div','setup');box.append(icon('House',58),el('h1','','Your home belongs on the big screen'),el('p','','Import your home once with sync-tv.py or from your phone, then connect Home Assistant or Hue on this TV. Your Mac is not needed for everyday control.'),el('p','setup-error',error.message));
-  box.append(button('Try again','RefreshCw',()=>location.reload(),'primary'));app.append(box);box.querySelector('button').focus();
+  app.replaceChildren();const box=el('div','setup');box.append(icon('House',58),el('h1','','Tu casa, en la pantalla grande'),el('p','','Importa tu casa una vez con sync-tv.py o desde tu teléfono y luego conecta Home Assistant o Hue en esta TV. No necesitas tu Mac para el uso diario.'),el('p','setup-error',error.message));
+  box.append(button('Reintentar','RefreshCw',()=>location.reload(),'primary'));app.append(box);box.querySelector('button').focus();
 }
 async function boot(){
   try {const next=await api('/api/home');config=normalize(next.plan);bundle=next;online=!!(next.controlReady ?? next.macOnline);store.state=next.state;render();apply(next);}
-  catch(error){console.warn('TV_BOOT',error.message);let cached;try{cached=JSON.parse(localStorage.getItem('house-tv:last-home:v1'));}catch{}if(cached){config=normalize(cached.plan);bundle=cached;store.state=cached.state;online=false;render();toast('Showing your saved home. Open Sync & connect to check the TV connection.');}else showSetup(error);}
+  catch(error){console.warn('TV_BOOT',error.message);let cached;try{cached=JSON.parse(localStorage.getItem('house-tv:last-home:v1'));}catch{}if(cached){config=normalize(cached.plan);bundle=cached;store.state=cached.state;online=false;render();toast('Se muestra tu casa guardada. Abre Sincronizar y conectar para revisar la conexión de la TV.');}else showSetup(error);}
   setTimeout(poll,1800);
 }
 async function poll(){

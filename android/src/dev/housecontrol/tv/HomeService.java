@@ -50,11 +50,11 @@ public final class HomeService extends Service {
     @Override public void onCreate(){super.onCreate();try{initialize(this);}catch(Exception ignored){}}
     @Override public IBinder onBind(Intent intent){if(sharedEngine!=null&&!ACTIVITY_BIND.equals(intent.getAction()))sharedEngine.setWidgetActive(true);return new Binder(){
         @Override protected boolean onTransact(int code,Parcel data,Parcel reply,int flags)throws RemoteException{
-            if(!trusted(Binder.getCallingUid())){reply.writeException(new SecurityException("Only a paired launcher may access this home."));return true;}
+            if(!trusted(Binder.getCallingUid())){reply.writeException(new SecurityException("Solo un launcher vinculado puede acceder a esta casa."));return true;}
             JSONObject result;
             try{
                 if(code==5){storeAppearance(HomeService.this,data.readString(),false);reply.writeNoException();reply.writeString("{\"ok\":true}");return true;}
-                if(sharedEngine==null)throw new IllegalStateException("Open House Control to finish TV setup.");
+                if(sharedEngine==null)throw new IllegalStateException("Abre House Control para terminar de configurar la TV.");
                 if(code==1){result=sharedEngine.home();}
                 else if(code==2){String id=data.readString();result=sharedEngine.action(new JSONObject().put("kind","scene").put("id",id));}
                 else if(code==3){sharedEngine.setWidgetActive(data.readInt()!=0);result=new JSONObject().put("ok",true);}

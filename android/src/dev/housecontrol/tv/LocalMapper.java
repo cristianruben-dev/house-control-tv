@@ -74,9 +74,9 @@ final class LocalMapper {
     }
     /** "homeassistant.local:8123" → "http://homeassistant.local:8123". */
     static String haURL(String raw)throws IOException{
-        String s=raw==null?"":raw.trim();if(s.isEmpty())throw new IOException("Enter the address of your Home Assistant, for example http://192.168.1.20:8123");if(!s.contains("://"))s="http://"+s;while(s.endsWith("/"))s=s.substring(0,s.length()-1);
-        URI u;try{u=new URI(s);}catch(URISyntaxException e){throw new IOException("This is not a web address.");}
-        if(u.getHost()==null||!(u.getScheme().equals("http")||u.getScheme().equals("https"))||u.getRawUserInfo()!=null||u.getRawQuery()!=null||u.getRawFragment()!=null||(u.getRawPath()!=null&&!u.getRawPath().isEmpty()))throw new IOException("Enter only the server address, for example http://192.168.1.20:8123");
+        String s=raw==null?"":raw.trim();if(s.isEmpty())throw new IOException("Escribe la dirección de tu Home Assistant, por ejemplo http://192.168.1.20:8123");if(!s.contains("://"))s="http://"+s;while(s.endsWith("/"))s=s.substring(0,s.length()-1);
+        URI u;try{u=new URI(s);}catch(URISyntaxException e){throw new IOException("Esta no es una dirección web.");}
+        if(u.getHost()==null||!(u.getScheme().equals("http")||u.getScheme().equals("https"))||u.getRawUserInfo()!=null||u.getRawQuery()!=null||u.getRawFragment()!=null||(u.getRawPath()!=null&&!u.getRawPath().isEmpty()))throw new IOException("Escribe solo la dirección del servidor, por ejemplo http://192.168.1.20:8123");
         if(u.getPort()==-1&&u.getScheme().equals("http")&&(u.getHost().endsWith(".local")||u.getHost().equals("homeassistant")))s+=":8123";return s;
     }
 
@@ -84,7 +84,7 @@ final class LocalMapper {
     static boolean hueId(String id){return id!=null&&id.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");}
     /** "https://192.168.1.2/" → "192.168.1.2"; a port is kept ("192.168.1.2:8443"). */
     static String hueHost(String raw)throws IOException{String h=raw==null?"":raw.trim().replaceFirst("^https?://","");while(h.endsWith("/"))h=h.substring(0,h.length()-1);
-        if(!h.matches("[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?|\\[[0-9A-Fa-f:]{2,45}\\](:[0-9]{1,5})?"))throw new IOException("Enter the bridge address shown in the Hue app (Settings → My Hue system).");return h;}
+        if(!h.matches("[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?|\\[[0-9A-Fa-f:]{2,45}\\](:[0-9]{1,5})?"))throw new IOException("Escribe la dirección del bridge que muestra la app de Hue (Ajustes → Mi sistema Hue).");return h;}
     static String bare(String host){if(host.startsWith("[")&&host.indexOf(']')>0)return host.substring(1,host.indexOf(']'));int c=host.indexOf(':');return c>0&&host.indexOf(':',c+1)<0?host.substring(0,c):host;}
     static JSONObject hueLight(JSONObject light)throws JSONException{
         JSONObject out=new JSONObject();JSONObject on=light.optJSONObject("on");if(on!=null&&on.opt("on") instanceof Boolean)out.put("on",on.getBoolean("on"));
@@ -105,6 +105,6 @@ final class LocalMapper {
     /** Tests run the mock hubs on loopback; on the TV, loopback is the TV itself and stays refused. */
     static boolean allowLoopback=false;
     static boolean privateAddress(InetAddress a){if(allowLoopback&&a.isLoopbackAddress())return true;if(a.isSiteLocalAddress()||a.isLinkLocalAddress())return true;byte[] b=a.getAddress();return (b.length==16&&(b[0]&0xfe)==0xfc)||(b.length==4&&(b[0]&255)==100&&(b[1]&0xc0)==64);}
-    static void requirePrivate(String host)throws IOException{InetAddress[] all;try{all=InetAddress.getAllByName(bare(host));}catch(UnknownHostException e){throw new IOException("Cannot find "+bare(host)+" on this network. Use its IP address.");}
-        for(InetAddress a:all)if(!privateAddress(a))throw new IOException(bare(host)+" is not on your home network.");}
+    static void requirePrivate(String host)throws IOException{InetAddress[] all;try{all=InetAddress.getAllByName(bare(host));}catch(UnknownHostException e){throw new IOException("No se encuentra "+bare(host)+" en esta red. Usa su dirección IP.");}
+        for(InetAddress a:all)if(!privateAddress(a))throw new IOException(bare(host)+" no está en la red de tu casa.");}
 }

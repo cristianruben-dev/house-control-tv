@@ -11,12 +11,12 @@ const WIDGET_ZOOM=0.9; // the card is small: frame the model a little tighter th
 const resizeObserver=new ResizeObserver(()=>world?.resize());resizeObserver.observe(canvas);
 function refresh(){
  try{
-  const home=JSON.parse(window.HouseWidget?.home()||'{}');if(!home.plan){message.textContent=home.error||'Open House Control to set up your home.';return;}
+  const home=JSON.parse(window.HouseWidget?.home()||'{}');if(!home.plan){message.textContent=home.error||'Abre House Control para configurar tu casa.';return;}
   const serialized=JSON.stringify(home.state);
-  if(home.revision!==revision){world?.dispose();world=null;resizeObserver.unobserve(canvas);const replacement=document.createElement('canvas');replacement.setAttribute('aria-label','Live 3D home');canvas.replaceWith(replacement);canvas=replacement;resizeObserver.observe(canvas);store.state=home.state;const config=normalize(home.plan);world=createWorld(canvas,config,store,{onHover(){},onPick(){},background:BACKGROUND,presentationAspect:window.HouseWidget?.renderAspect?.()||null,resolution:()=>window.HouseWidget?.resolution?.()??1});world.setInsets(0,0);world.setZoom(WIDGET_ZOOM);world.setRunning(active&&!document.hidden);world.settle();revision=home.revision;}
+  if(home.revision!==revision){world?.dispose();world=null;resizeObserver.unobserve(canvas);const replacement=document.createElement('canvas');replacement.setAttribute('aria-label','Casa en 3D en vivo');canvas.replaceWith(replacement);canvas=replacement;resizeObserver.observe(canvas);store.state=home.state;const config=normalize(home.plan);world=createWorld(canvas,config,store,{onHover(){},onPick(){},background:BACKGROUND,presentationAspect:window.HouseWidget?.renderAspect?.()||null,resolution:()=>window.HouseWidget?.resolution?.()??1});world.setInsets(0,0);world.setZoom(WIDGET_ZOOM);world.setRunning(active&&!document.hidden);world.settle();revision=home.revision;}
   else if(serialized!==lastState){store.state=home.state;for(const fn of listeners)fn({type:'bulk'});world?.setRunning(active&&!document.hidden);}
   lastState=serialized;message.textContent='';
- }catch(error){message.textContent='Your home will appear here shortly.';console.warn('Widget',error.message);}
+ }catch(error){message.textContent='Tu casa aparecerá aquí en un momento.';console.warn('Widget',error.message);}
 }
 document.addEventListener('visibilitychange',()=>world?.setRunning(active&&!document.hidden));
 window.widgetRunning=on=>{active=on;world?.setRunning(active&&!document.hidden);};

@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("connection", MODE_PRIVATE);
         try {
             homeBound=bindService(new Intent(this,HomeService.class).setAction(HomeService.ACTIVITY_BIND),homeConnection,Context.BIND_AUTO_CREATE);
-            if(!homeBound)throw new IOException("House Control service could not connect.");
+            if(!homeBound)throw new IOException("No se pudo conectar con el servicio de House Control.");
             HomeService.initialize(this);
             engine=HomeService.sharedEngine;localServer=HomeService.sharedServer;engine.setActive(true);
         } catch(Exception error){startupError=HomeEngine.safe(error);}
@@ -70,7 +70,7 @@ public class MainActivity extends Activity {
     private void configure(Intent i) {
         if((i.hasExtra("homeImport")||i.hasExtra("remoteKey"))&&engine!=null&&engine.plan!=null){
             String expected=prefs.getString("remoteKey", ""),provided=i.getStringExtra("provisionKey");
-            if(provided==null||expected.isEmpty()||!java.security.MessageDigest.isEqual(expected.getBytes(SharingTransport.UTF8),provided.getBytes(SharingTransport.UTF8))){startupError="Use your paired Mac or the private phone link to update this TV.";return;}
+            if(provided==null||expected.isEmpty()||!java.security.MessageDigest.isEqual(expected.getBytes(SharingTransport.UTF8),provided.getBytes(SharingTransport.UTF8))){startupError="Usa tu Mac vinculada o el enlace privado del teléfono para actualizar esta TV.";return;}
         }
         i.removeExtra("provisionKey");
         String remoteKey=i.getStringExtra("remoteKey");
@@ -83,7 +83,7 @@ public class MainActivity extends Activity {
         String encoded=i.getStringExtra("homeImport");
         if(encoded!=null && engine!=null)try{
             byte[] data=java.util.Base64.getUrlDecoder().decode(encoded);
-            if(data.length>512*1024)throw new IOException("Home import is too large.");
+            if(data.length>512*1024)throw new IOException("La casa importada es demasiado grande.");
             engine.importHome(new JSONObject(new String(data,"UTF-8")));
             i.removeExtra("homeImport");
         }catch(Exception e){startupError=HomeEngine.safe(e);}

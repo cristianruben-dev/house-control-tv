@@ -14,14 +14,14 @@ final class CloudMapper {
     }
     static JSONObject patch(String section,JSONObject raw,JSONObject device)throws Exception{
         JSONObject out=new JSONObject();
-        if(raw.has("on")){if(!(raw.get("on") instanceof Boolean))throw new IllegalArgumentException("Expected an explicit on/off value.");out.put("on",raw.getBoolean("on"));}
+        if(raw.has("on")){if(!(raw.get("on") instanceof Boolean))throw new IllegalArgumentException("Falta un valor de encendido o apagado.");out.put("on",raw.getBoolean("on"));}
         if(section.equals("lights")){
-            for(String key:new String[]{"brightness","temp"})if(raw.has(key)){Object v=raw.get(key);if(!(v instanceof Number)||!Double.isFinite(((Number)v).doubleValue()))throw new IllegalArgumentException("Invalid light setting.");double value=((Number)v).doubleValue();out.put(key,key.equals("brightness")?clamp(value,.05,1):clamp(value,2200,6500));}
-            if(raw.has("color")){if(!raw.isNull("color")&&!raw.getString("color").matches("#[a-fA-F0-9]{6}"))throw new IllegalArgumentException("Invalid light colour.");out.put("color",raw.get("color"));}
+            for(String key:new String[]{"brightness","temp"})if(raw.has(key)){Object v=raw.get(key);if(!(v instanceof Number)||!Double.isFinite(((Number)v).doubleValue()))throw new IllegalArgumentException("Ajuste de luz no válido.");double value=((Number)v).doubleValue();out.put(key,key.equals("brightness")?clamp(value,.05,1):clamp(value,2200,6500));}
+            if(raw.has("color")){if(!raw.isNull("color")&&!raw.getString("color").matches("#[a-fA-F0-9]{6}"))throw new IllegalArgumentException("Color de luz no válido.");out.put("color",raw.get("color"));}
         }else{
-            if(raw.has("target")){Object v=raw.get("target");if(!(v instanceof Number)||!Double.isFinite(((Number)v).doubleValue()))throw new IllegalArgumentException("Invalid temperature.");out.put("target",Math.round(clamp(((Number)v).doubleValue(),device.optInt("min",16),device.optInt("max",30))));}
-            if(raw.has("mode")){String value=raw.getString("mode");if(!MODES.containsKey(value))throw new IllegalArgumentException("Unsupported climate mode.");out.put("mode",value);}
-            if(raw.has("fan")){String value=raw.getString("fan");if(!FANS.containsKey(value))throw new IllegalArgumentException("Unsupported fan speed.");out.put("fan",value);}
+            if(raw.has("target")){Object v=raw.get("target");if(!(v instanceof Number)||!Double.isFinite(((Number)v).doubleValue()))throw new IllegalArgumentException("Temperatura no válida.");out.put("target",Math.round(clamp(((Number)v).doubleValue(),device.optInt("min",16),device.optInt("max",30))));}
+            if(raw.has("mode")){String value=raw.getString("mode");if(!MODES.containsKey(value))throw new IllegalArgumentException("Modo de clima no compatible.");out.put("mode",value);}
+            if(raw.has("fan")){String value=raw.getString("fan");if(!FANS.containsKey(value))throw new IllegalArgumentException("Velocidad de ventilador no compatible.");out.put("fan",value);}
         }
         return out;
     }

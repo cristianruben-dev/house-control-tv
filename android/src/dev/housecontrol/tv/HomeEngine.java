@@ -31,22 +31,22 @@ final class HomeEngine {
         watchLinks();
         localScheduler.scheduleWithFixedDelay(()->{if(polling&&(ha.connected()||hue.connected()))try{pollLocal();}catch(Exception ignored){}},2,5,TimeUnit.SECONDS);
     }
-    static String safe(Exception e){return e.getMessage()==null?"Device request failed.":e.getMessage();}
+    static String safe(Exception e){return e.getMessage()==null?"Falló la solicitud al dispositivo.":e.getMessage();}
     synchronized void setActive(boolean on){activityActive=on;polling=activityActive||widgetActive;}
     synchronized void setWidgetActive(boolean on){widgetActive=on;polling=activityActive||widgetActive;}
     JSONObject read(String name)throws Exception{AtomicFile f=new AtomicFile(new File(context.getFilesDir(),name));return f.getBaseFile().exists()?new JSONObject(new String(f.readFully(),SharingTransport.UTF8)):null;}
     void write(String name,JSONObject value)throws Exception{AtomicFile f=new AtomicFile(new File(context.getFilesDir(),name));FileOutputStream out=null;try{out=f.startWrite();out.write(value.toString().getBytes(SharingTransport.UTF8));f.finishWrite(out);}catch(Exception e){f.failWrite(out);throw e;}}
     void save()throws Exception{write("home.json",new JSONObject().put("plan",plan).put("state",state).put("revision",revision).put("syncFingerprint",syncFingerprint));}
     static void validatePlan(JSONObject p)throws Exception{
-        JSONArray rooms=p.getJSONArray("rooms");if(rooms.length()<1||rooms.length()>100)throw new IOException("A home needs 1–100 rooms.");Set<String> ids=new HashSet<>(),roomIds=new HashSet<>();
-        for(int i=0;i<rooms.length();i++){JSONObject r=rooms.getJSONObject(i);String id=r.getString("id");JSONArray rect=r.getJSONArray("rect");if(id.isEmpty()||!ids.add(id)||rect.length()!=4)throw new IOException("Invalid room id or rectangle.");roomIds.add(id);for(int n=0;n<4;n++)if(!Double.isFinite(rect.getDouble(n))||Math.abs(rect.getDouble(n))>500)throw new IOException("Invalid room dimensions.");if(rect.getDouble(2)<=0||rect.getDouble(3)<=0)throw new IOException("Room size must be positive.");}
-        for(String section:new String[]{"lights","acs"}){JSONArray a=p.optJSONArray(section);if(a==null)continue;if(a.length()>200)throw new IOException("Too many devices.");for(int i=0;i<a.length();i++){JSONObject d=a.getJSONObject(i);if(!ids.add(d.getString("id"))||!roomIds.contains(d.getString("room")))throw new IOException("Duplicate device id or unknown room.");JSONArray pos=d.getJSONArray("pos");if(pos.length()!=2||!Double.isFinite(pos.getDouble(0))||!Double.isFinite(pos.getDouble(1)))throw new IOException("Invalid device position.");}}
+        JSONArray rooms=p.getJSONArray("rooms");if(rooms.length()<1||rooms.length()>100)throw new IOException("Una casa necesita de 1 a 100 cuartos.");Set<String> ids=new HashSet<>(),roomIds=new HashSet<>();
+        for(int i=0;i<rooms.length();i++){JSONObject r=rooms.getJSONObject(i);String id=r.getString("id");JSONArray rect=r.getJSONArray("rect");if(id.isEmpty()||!ids.add(id)||rect.length()!=4)throw new IOException("Id o rectángulo de cuarto no válido.");roomIds.add(id);for(int n=0;n<4;n++)if(!Double.isFinite(rect.getDouble(n))||Math.abs(rect.getDouble(n))>500)throw new IOException("Medidas de cuarto no válidas.");if(rect.getDouble(2)<=0||rect.getDouble(3)<=0)throw new IOException("El tamaño del cuarto debe ser positivo.");}
+        for(String section:new String[]{"lights","acs"}){JSONArray a=p.optJSONArray(section);if(a==null)continue;if(a.length()>200)throw new IOException("Demasiados dispositivos.");for(int i=0;i<a.length();i++){JSONObject d=a.getJSONObject(i);if(!ids.add(d.getString("id"))||!roomIds.contains(d.getString("room")))throw new IOException("Id de dispositivo repetido o cuarto desconocido.");JSONArray pos=d.getJSONArray("pos");if(pos.length()!=2||!Double.isFinite(pos.getDouble(0))||!Double.isFinite(pos.getDouble(1)))throw new IOException("Posición de dispositivo no válida.");}}
     }
     void importHome(JSONObject data)throws Exception{
         JSONObject p=data.has("plan")?data.getJSONObject("plan"):data;validatePlan(p);JSONObject incoming=data.optJSONObject("state"),next=new JSONObject().put("lights",new JSONObject()).put("acs",new JSONObject());
         synchronized(actionLock){synchronized(lock){
             String fingerprint=data.optString("syncFingerprint");boolean settingsOnly=data.optBoolean("settingsOnly");
-            if(settingsOnly&&!fingerprint.matches("[a-f0-9]{64}"))throw new IOException("Invalid settings fingerprint.");
+            if(settingsOnly&&!fingerprint.matches("[a-f0-9]{64}"))throw new IOException("Huella de ajustes no válida.");
             if(settingsOnly&&plan!=null&&fingerprint.equals(syncFingerprint))return;
             if(settingsOnly)incoming=null;
             for(String section:new String[]{"lights","acs"}){JSONArray devices=p.optJSONArray(section);if(devices==null)continue;for(int i=0;i<devices.length();i++){JSONObject d=devices.getJSONObject(i);String id=d.getString("id");JSONObject value=new JSONObject();
@@ -61,20 +61,20 @@ final class HomeEngine {
         watchLinks();localChanged();
     }
     JSONObject home()throws Exception{
-        synchronized(lock){if(plan==null)throw new IOException("Import your home from Mac once, or upload a floor plan from your phone.");
+        synchronized(lock){if(plan==null)throw new IOException("Importa tu casa desde la Mac una vez, o sube un plano desde tu teléfono.");
             JSONObject safePlan=CloudMapper.copy(plan);Set<String> needed=new TreeSet<>();
             for(String section:new String[]{"lights","acs"}){JSONArray a=safePlan.optJSONArray(section);if(a==null)continue;for(int i=0;i<a.length();i++){JSONObject d=a.getJSONObject(i);String via=via(d);boolean real=!via.isEmpty();if(real){d.put("via",via);if(!via.equals("homekit"))needed.add(via);}d.put("linked",real);d.remove("link");d.remove("sensor");}}
             List<String> on=new ArrayList<>(),off=new ArrayList<>();for(String s:needed)(serviceReady(s)?on:off).add(title(s));
-            boolean ready=needed.isEmpty()||!on.isEmpty();String label=off.isEmpty()?(on.isEmpty()?"TV · no devices linked":"TV · "+String.join(", ",on)+" connected"):on.isEmpty()?"Connect "+String.join(", ",off)+" on TV":"TV · "+String.join(", ",on)+" · connect "+String.join(", ",off);
+            boolean ready=needed.isEmpty()||!on.isEmpty();String label=off.isEmpty()?(on.isEmpty()?"TV · sin dispositivos ligados":"TV · "+String.join(", ",on)+" conectado"):on.isEmpty()?"Conecta "+String.join(", ",off)+" en la TV":"TV · "+String.join(", ",on)+" · conecta "+String.join(", ",off);
             JSONObject errors=new JSONObject().put("homeassistant",ha.lastError).put("hue",hue.lastError),services=new JSONObject().put("homeassistant",ha.connected()).put("hue",hue.connected());
-            return new JSONObject().put("version",2).put("mode","standalone").put("plan",safePlan).put("state",CloudMapper.copy(state)).put("revision",revision).put("syncFingerprint",syncFingerprint).put("macOnline",ready).put("controlReady",ready).put("connections",services).put("connectionErrors",errors).put("connectionLabel",label).put("lastPoll",lastPoll).put("cloudError",ha.lastError.isEmpty()?hue.lastError:ha.lastError).put("source","This TV");
+            return new JSONObject().put("version",2).put("mode","standalone").put("plan",safePlan).put("state",CloudMapper.copy(state)).put("revision",revision).put("syncFingerprint",syncFingerprint).put("macOnline",ready).put("controlReady",ready).put("connections",services).put("connectionErrors",errors).put("connectionLabel",label).put("lastPoll",lastPoll).put("cloudError",ha.lastError.isEmpty()?hue.lastError:ha.lastError).put("source","Esta TV");
         }
     }
     /** Which platform switches this plan device, from its `link`. */
     static String via(JSONObject d){JSONObject l=d.optJSONObject("link");if(l!=null&&!l.optString("id").isEmpty())return l.optString("service");return "";}
     boolean serviceReady(String s){return s.equals(LocalMapper.HA)?ha.connected():s.equals(LocalMapper.HUE)&&hue.connected();}
     static String title(String s){return s.equals(LocalMapper.HA)?"Home Assistant":s.equals(LocalMapper.HUE)?"Hue":s.equals("homekit")?"Apple Home":s;}
-    JSONObject find(String section,String id)throws Exception{JSONArray a=plan.optJSONArray(section);if(a!=null)for(int i=0;i<a.length();i++)if(a.getJSONObject(i).getString("id").equals(id))return a.getJSONObject(i);throw new IOException("Device or scene no longer exists.");}
+    JSONObject find(String section,String id)throws Exception{JSONArray a=plan.optJSONArray(section);if(a!=null)for(int i=0;i<a.length();i++)if(a.getJSONObject(i).getString("id").equals(id))return a.getJSONObject(i);throw new IOException("El dispositivo o la escena ya no existe.");}
     void commit(String section,String id,JSONObject patch)throws Exception{synchronized(lock){CloudMapper.merge(state.getJSONObject(section).getJSONObject(id),patch);state.put("scene",JSONObject.NULL);save();}}
     void change(String section,String id,JSONObject patch)throws Exception{
         JSONObject d,current,desired; synchronized(lock){d=CloudMapper.copy(find(section,id));current=CloudMapper.copy(state.getJSONObject(section).getJSONObject(id));}
@@ -85,17 +85,17 @@ final class HomeEngine {
     }
     void local(String section,String id,JSONObject link,JSONObject patch,JSONObject desired)throws Exception{
         String service=link.optString("service"),target=link.optString("id");
-        if(service.equals(LocalMapper.HUE)){if(!section.equals("lights"))throw new IOException("Hue has no air conditioners.");if(!hue.connected())throw new IOException("Pair the Hue Bridge on this TV first: Sync & connect → Home Assistant & Hue.");hue.send(target,LocalMapper.withPower(patch,desired));}
-        else if(service.equals(LocalMapper.HA)){if(!ha.connected())throw new IOException("Connect Home Assistant on this TV first: Sync & connect → Home Assistant & Hue.");ha.send(target,section.equals("lights")?LocalMapper.withPower(patch,desired):patch,desired);}
-        else if(service.equals("homekit"))throw new IOException("Apple Home devices can only be switched from an iPhone or iPad: HomeKit is Apple-only. Add the device to Home Assistant to control it from the TV.");
-        else throw new IOException("This device uses a connection the TV does not know.");
+        if(service.equals(LocalMapper.HUE)){if(!section.equals("lights"))throw new IOException("Hue no tiene aires acondicionados.");if(!hue.connected())throw new IOException("Primero vincula el Hue Bridge en esta TV: Sincronizar y conectar → Home Assistant y Hue.");hue.send(target,LocalMapper.withPower(patch,desired));}
+        else if(service.equals(LocalMapper.HA)){if(!ha.connected())throw new IOException("Primero conecta Home Assistant en esta TV: Sincronizar y conectar → Home Assistant y Hue.");ha.send(target,section.equals("lights")?LocalMapper.withPower(patch,desired):patch,desired);}
+        else if(service.equals("homekit"))throw new IOException("Los dispositivos de Apple Home solo se controlan desde un iPhone o iPad: HomeKit es exclusivo de Apple. Agrega el dispositivo a Home Assistant para controlarlo desde la TV.");
+        else throw new IOException("Este dispositivo usa una conexión que la TV no conoce.");
         touched.put(id,System.currentTimeMillis());commit(section,id,patch);
     }
     JSONObject action(JSONObject action)throws Exception{
         synchronized(actionLock){String kind=action.getString("kind"),id=action.optString("id");
-            if(kind.equals("light")||kind.equals("acPower")){Object value=action.get("on");if(!(value instanceof Boolean))throw new IOException("Expected an explicit on/off value.");change(kind.equals("light")?"lights":"acs",id,new JSONObject().put("on",value));}
-            else if(kind.equals("lightSet")){JSONObject patch=new JSONObject();for(String key:new String[]{"on","brightness","temp","color"})if(action.has(key))patch.put(key,action.get(key));if(patch.length()==0)throw new IOException("Nothing to change.");change("lights",id,patch);}
-            else if(kind.equals("acTarget")){JSONObject d; synchronized(lock){d=find("acs",id);}Object value=action.get("target");if(!(value instanceof Number))throw new IOException("Invalid temperature.");double target=((Number)value).doubleValue();if(!Double.isFinite(target)||target<d.optInt("min",16)||target>d.optInt("max",30))throw new IOException("Temperature is outside this unit’s range.");change("acs",id,new JSONObject().put("target",Math.round(target)));}
+            if(kind.equals("light")||kind.equals("acPower")){Object value=action.get("on");if(!(value instanceof Boolean))throw new IOException("Falta un valor de encendido o apagado.");change(kind.equals("light")?"lights":"acs",id,new JSONObject().put("on",value));}
+            else if(kind.equals("lightSet")){JSONObject patch=new JSONObject();for(String key:new String[]{"on","brightness","temp","color"})if(action.has(key))patch.put(key,action.get(key));if(patch.length()==0)throw new IOException("No hay nada que cambiar.");change("lights",id,patch);}
+            else if(kind.equals("acTarget")){JSONObject d; synchronized(lock){d=find("acs",id);}Object value=action.get("target");if(!(value instanceof Number))throw new IOException("Temperatura no válida.");double target=((Number)value).doubleValue();if(!Double.isFinite(target)||target<d.optInt("min",16)||target>d.optInt("max",30))throw new IOException("La temperatura está fuera del rango de este equipo.");change("acs",id,new JSONObject().put("target",Math.round(target)));}
             else if(kind.equals("scene")&&isActiveScene(id))sceneOff(id);
             else if(kind.equals("scene")||kind.equals("allLights")||kind.equals("room")){
                 if(kind.equals("scene")&&(ha.connected()||hue.connected()))pollLocal();
@@ -103,11 +103,11 @@ final class HomeEngine {
                 List<String> errors=new ArrayList<>();for(String section:new String[]{"lights","acs"}){JSONArray devices; synchronized(lock){devices=new JSONArray(plan.optJSONArray(section)==null?"[]":plan.getJSONArray(section).toString());}
                     for(int i=0;i<devices.length();i++){JSONObject d=devices.getJSONObject(i),patch=new JSONObject();String deviceId=d.getString("id");
                         if(scene!=null){JSONObject patches=scene.optJSONObject(section);if(patches!=null){CloudMapper.merge(patch,patches.optJSONObject("*"));CloudMapper.merge(patch,patches.optJSONObject(deviceId));}}
-                        else if(section.equals("lights")&&(!kind.equals("room")||d.getString("room").equals(id))){if(!(action.opt("on") instanceof Boolean))throw new IOException("Expected on/off value.");patch.put("on",action.getBoolean("on"));}
+                        else if(section.equals("lights")&&(!kind.equals("room")||d.getString("room").equals(id))){if(!(action.opt("on") instanceof Boolean))throw new IOException("Falta un valor de encendido o apagado.");patch.put("on",action.getBoolean("on"));}
                         if(patch.length()==0)continue;try{if(scene!=null&&section.equals("lights"))synchronized(lock){patch=CloudMapper.difference(CloudMapper.patch(section,patch,d),state.getJSONObject(section).getJSONObject(deviceId));}if(patch.length()>0)change(section,deviceId,patch);}catch(Exception e){errors.add(d.optString("name",deviceId)+": "+safe(e));}
                     }}
                 if(!errors.isEmpty())throw new IOException(String.join("; ",errors));if(scene!=null)synchronized(lock){state.put("scene",id);save();}
-            }else throw new IOException("Unsupported TV action.");
+            }else throw new IOException("Acción de TV no compatible.");
             return new JSONObject().put("ok",true).put("direct",true).put("home",home());
         }
     }
@@ -156,7 +156,7 @@ final class HomeEngine {
     JSONObject connections()throws Exception{return new JSONObject().put("homeassistant",ha.info()).put("hue",hue.info()).put("macFingerprint",context.getSharedPreferences("connections",0).getString("macFingerprint",""));}
     /** The paired Mac's Home Assistant and Hue connections (sync_mac.py). A connection set up on the TV itself is kept. */
     JSONObject adopt(JSONObject body)throws Exception{
-        String fingerprint=body.optString("fingerprint");if(!fingerprint.matches("[a-f0-9]{64}"))throw new IOException("Invalid connections fingerprint.");
+        String fingerprint=body.optString("fingerprint");if(!fingerprint.matches("[a-f0-9]{64}"))throw new IOException("Huella de conexiones no válida.");
         if(body.has(LocalMapper.HA))ha.adopt(body.optJSONObject(LocalMapper.HA));if(body.has(LocalMapper.HUE))hue.adopt(body.optJSONObject(LocalMapper.HUE));
         context.getSharedPreferences("connections",0).edit().putString("macFingerprint",fingerprint).commit();watchLinks();localChanged();return connections();
     }
@@ -168,7 +168,7 @@ final class HomeEngine {
             case "/api/homeassistant/connect":ha.connect(body.optString("url"),body.optString("token"));watchLinks();localChanged();return connections();
             case "/api/homeassistant/disconnect":ha.disconnect();return connections();
             case "/api/hue/pair":try{hue.pair(body.optString("host"),body.optString("bridgeId"),body.optString("name"));}catch(HueClient.ButtonNotPressed e){return connections().put("buttonRequired",true);}watchLinks();localChanged();return connections();
-            case "/api/hue/disconnect":hue.disconnect();return connections();case "/api/home":return home().put("appVersion",version());case "/api/action":return action(body);case "/api/import":importHome(body);return new JSONObject().put("ok",true).put("home",home());default:throw new IOException("Unknown request.");}
+            case "/api/hue/disconnect":hue.disconnect();return connections();case "/api/home":return home().put("appVersion",version());case "/api/action":return action(body);case "/api/import":importHome(body);return new JSONObject().put("ok",true).put("home",home());default:throw new IOException("Solicitud desconocida.");}
     }
     String version(){try{return context.getPackageManager().getPackageInfo(context.getPackageName(),0).versionName;}catch(Exception e){return "";}}
     void close(){localScheduler.shutdownNow();}
