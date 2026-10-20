@@ -1,7 +1,7 @@
 import './polyfills.js';
 import { normalize } from './vendor/config.js';
 import { createWorld } from './vendor/three/world.js';
-// A host may draw the card itself (frosted glass): the model then floats on a transparent page.
+// A host may draw the card itself (its own glass): the model then floats on a transparent page.
 const BACKGROUND=window.HouseWidget?.background?.()||'#0b111d';
 const style=document.createElement('style');style.textContent='html,body{margin:0;width:100%;height:100%;overflow:hidden;background:'+(BACKGROUND==='transparent'?'transparent':BACKGROUND)+';color:#9baecb;font-family:sans-serif}canvas{width:100%;height:100%;display:block}p{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;padding:1rem;text-align:center;pointer-events:none}';document.head.append(style);
 let canvas=document.querySelector('canvas');const message=document.querySelector('#message');

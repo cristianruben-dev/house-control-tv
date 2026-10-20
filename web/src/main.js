@@ -1,7 +1,7 @@
 import './polyfills.js';
 import './style.css';
 import './theme.css';
-import { createElement, House, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw } from 'lucide';
+import { createElement, House, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, SunMoon, Layers, Image } from 'lucide';
 import QRCode from 'qrcode';
 import { normalize } from './vendor/config.js';
 import { createWorld } from './vendor/three/world.js';
@@ -10,7 +10,49 @@ import { api, nativeConfig, remoteURL } from './api.js';
 const app = document.querySelector('#app');
 const $ = (s) => document.querySelector(s);
 function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
-const icons = { House, Settings2, Lightbulb, Power, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, Minus, Plus, ChevronLeft, ChevronRight };
+const icons = { House, Settings2, Lightbulb, Power, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, Minus, Plus, ChevronLeft, ChevronRight, SunMoon, Layers, Image };
+
+/**
+ * The look: dark or light mode tints the glass darker or lighter, by its opacity in percent, over one of the
+ * launcher's wallpapers. It comes from the launcher through House Control's service, or from this app's settings,
+ * whichever was chosen last. Without either (the phone), dark at 15 % over the forest.
+ */
+const WALLPAPERS=import.meta.glob('./assets/wallpapers/*.jpg',{eager:true,import:'default'});
+const THUMBS=import.meta.glob('./assets/wallpapers/thumbs/*.jpg',{eager:true,import:'default'});
+const wallpaperFile=path=>path.split('/').pop();
+const WALLPAPER_NAMES=Object.keys(WALLPAPERS).map(wallpaperFile).sort();
+const DEFAULT_WALLPAPER='bosque_al_atardecer.jpg';
+/** The look each wallpaper reads best with, the same as the launcher's (Wallpapers.java). */
+const PRESETS={
+  'acantilados_estelares.jpg':{mode:'dark',opacity:45},'bajo_el_mar.jpg':{mode:'light',opacity:55},
+  'bosque_al_atardecer.jpg':{mode:'dark',opacity:30},'cometa_sobre_las_nubes.jpg':{mode:'dark',opacity:30},
+  'icebergs_al_atardecer.jpg':{mode:'light',opacity:50},'mirando_los_planetas.jpg':{mode:'dark',opacity:30},
+  'nebulosa_roja.jpg':{mode:'dark',opacity:35},'portal_en_ruinas.jpg':{mode:'dark',opacity:30},
+};
+/** Light mode puts dark text on the glass: below this much white it would not read over a dark picture. */
+const LIGHT_MIN=40,OPACITY_STEP=5;
+const opacityMin=mode=>mode==='light'?LIGHT_MIN:0;
+let appearance={mode:'dark',opacity:15,wallpaper:DEFAULT_WALLPAPER};
+function applyAppearance(a){
+  const mode=a?.mode==='light'?'light':'dark';
+  const opacity=Math.max(opacityMin(mode),Math.min(100,Math.round(Number(a?.opacity??15))));
+  const wallpaper=WALLPAPER_NAMES.includes(a?.wallpaper)?a.wallpaper:DEFAULT_WALLPAPER;
+  appearance={mode,opacity,wallpaper};
+  const o=opacity/100,rgb=mode==='light'?'255,255,255':'0,0,0';
+  const root=document.documentElement;root.dataset.mode=mode;
+  root.style.setProperty('--sheen',`linear-gradient(180deg, rgba(${rgb},${(o*4/3).toFixed(3)}), rgba(${rgb},${(o*2/3).toFixed(3)}))`);
+  root.style.setProperty('--rim',mode==='light'?'rgba(255, 255, 255, .3)':'rgba(255, 255, 255, .2)');
+  root.style.setProperty('--wallpaper',`url("${WALLPAPERS['./assets/wallpapers/'+wallpaper]}")`);
+}
+function savedAppearance(){try{return JSON.parse(localStorage.getItem('house-tv:appearance'));}catch{return null;}}
+applyAppearance(nativeConfig?.appearance||savedAppearance());window.applyAppearance=applyAppearance;
+/** A look chosen in the settings: shown at once and kept (on the TV, newer than the launcher's until it changes). */
+function setAppearance(next){
+  applyAppearance(next);
+  if(window.HouseTV?.setAppearance)window.HouseTV.setAppearance(JSON.stringify(appearance));
+  else try{localStorage.setItem('house-tv:appearance',JSON.stringify(appearance));}catch{}
+  modal?.paintSettings?.();
+}
 function icon(name, size = 24) { return createElement(icons[name] || House, { width: size, height: size, 'stroke-width': 1.65 }); }
 function button(label, name, action, cls = '') {
   const b = el('button', cls); b.type = 'button'; b.setAttribute('aria-label', label);
@@ -21,8 +63,8 @@ let config, bundle, world, resizeObserver, deviceKind = 'lights', room = 'all', 
 let store = { state: { lights: {}, acs: {}, scene: null }, listeners: new Set(), on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); } };
 let lightNodes = new Map(), acNodes = new Map(), sceneNodes = new Map();
 let toastTimer;
-// Small TV chips (2 GB, 4 cores) draw the 3D view at a lower internal resolution; the UI stays sharp.
-const RES=(navigator.deviceMemory||4)<=2||(navigator.hardwareConcurrency||8)<=4?0.62:1;
+// The 3D view draws at the screen's full resolution, also on small TV chips: a lower one looked blurry.
+const RES=1;
 function toast(message) { const n = $('#toast'); if (!n) return; n.textContent = message; n.classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.classList.remove('visible'), 4500); }
 function emit() { for (const fn of store.listeners) fn({ type: 'bulk', remote: true }); }
 function apply(next) {
@@ -125,7 +167,7 @@ function render() {
   const header = el('header');
   const connection = el('div','connection'); const status = el('span'); status.id='status';
   const clock = el('time'); clock.id='clock';
-  connection.append(status, clock, button('Sync & connect', 'Smartphone', openSync, 'sync-button'));
+  connection.append(status, clock, button('Settings', 'Settings2', ()=>openSettings(), 'settings-button'), button('Sync & connect', 'Smartphone', openSync, 'sync-button'));
   header.append(connection);
   const tabs = el('nav','rooms'); tabs.setAttribute('aria-label','Rooms');
   for (const r of [{id:'all',name:'Whole home'}, ...config.rooms]) {
@@ -167,6 +209,61 @@ function tickClock(){if($('#clock'))$('#clock').textContent=new Date().toLocaleT
 setInterval(tickClock,15000);
 let modalCleanup = null;
 function closeModal(){modalCleanup?.();modalCleanup=null;modal?.remove();modal=null;lastFocus?.focus();}
+/**
+ * Settings: a dialog with its sections on the left (about 30 %) and the focused section's options on the right,
+ * like the launcher's. Theme, glass opacity and wallpaper; a wallpaper brings the theme and opacity that suit it.
+ */
+function openSettings(start='theme'){
+  if(modal)closeModal();
+  lastFocus=document.activeElement;modal=el('div','modal-backdrop settings-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-label','Settings');
+  const panel=el('section','settings-panel'),side=el('nav','settings-side'),content=el('div','settings-content');
+  side.append(el('h2','','Settings'));
+  const sections={theme:['Theme','SunMoon'],glass:['Glass','Layers'],wallpaper:['Wallpaper','Image']};
+  const tabs={};let current=null;
+  for(const [key,[label,name]] of Object.entries(sections)){
+    const b=button(label,name,()=>firstOption()?.focus(),'settings-section');b.dataset.section=key;tabs[key]=b;side.append(b);
+    b.onfocus=()=>show(key);
+  }
+  panel.append(side,content);modal.append(panel);document.body.append(modal);
+  const firstOption=()=>content.querySelector('.checked')||content.querySelector('button');
+  function show(key){
+    if(key===current)return;current=key;
+    for(const b of Object.values(tabs))b.classList.toggle('active',b.dataset.section===key);
+    content.replaceChildren(el('h3','',sections[key][0]));
+    if(key==='theme'){
+      content.append(el('p','settings-hint','Dark mode: dark glass and white text. Light mode: white glass and dark text.'));
+      for(const [mode,label] of [['dark','Dark'],['light','Light']]){const b=button(label,null,()=>setAppearance({...appearance,mode}),'settings-row option');b.dataset.theme=mode;content.append(b);}
+    }else if(key==='glass'){
+      content.append(el('p','settings-hint','How much the glass tints the wallpaper behind it. Left and right change it; light mode keeps at least 40 % so its dark text reads.'));
+      const slider=el('button','settings-row opacity-row');slider.type='button';slider.setAttribute('aria-label','Glass opacity');
+      const value=el('span','opacity-value'),bar=el('span','opacity-bar'),fill=el('i');bar.append(fill);
+      slider.append(el('span','','Opacity'),value,bar);content.append(slider);
+    }else{
+      content.append(el('p','settings-hint','The same pictures as the home screen. Each one brings the theme and opacity that suit it.'));
+      const grid=el('div','wallpaper-grid');
+      for(const name of WALLPAPER_NAMES){
+        const b=el('button','wallpaper-tile');b.type='button';b.dataset.wallpaper=name;
+        b.setAttribute('aria-label',name.replace('.jpg','').replace(/_/g,' '));
+        b.style.setProperty('--thumb',`url("${THUMBS['./assets/wallpapers/thumbs/'+name]}")`);
+        b.onclick=()=>setAppearance({...appearance,...PRESETS[name],wallpaper:name});
+        grid.append(b);
+      }
+      content.append(grid);
+    }
+    paint();
+  }
+  function paint(){
+    for(const b of content.querySelectorAll('[data-theme]'))b.classList.toggle('checked',b.dataset.theme===appearance.mode);
+    for(const b of content.querySelectorAll('[data-wallpaper]'))b.classList.toggle('checked',b.dataset.wallpaper===appearance.wallpaper);
+    const value=content.querySelector('.opacity-value');
+    if(value){value.textContent='‹ '+appearance.opacity+'% ›';content.querySelector('.opacity-bar i').style.width=appearance.opacity+'%';}
+  }
+  modal.paintSettings=paint;
+  // Back leaves the options for the sections first, then closes the settings.
+  modal.back=()=>{if(content.contains(document.activeElement))tabs[current].focus();else closeModal();};
+  modal.side=side;modal.content=content;modal.activeSection=()=>tabs[current];modal.firstOption=firstOption;
+  tabs[start].focus();
+}
 async function openSync(){
   if(bundle?.mode==='demo'){
     lastFocus=document.activeElement;modal=el('div','modal-backdrop');const panel=el('section','sync-panel');panel.append(el('p','eyebrow','ISOLATED DEMO'),el('h2','','A home you can safely explore'),el('p','sync-description','This demo has no real-device bindings. All switches and scenes affect the demo model only.'),button('Back to demo','ArrowLeft',closeModal,'primary'),button('Reset demo','RefreshCw',()=>switchDemo(true),'secondary'),button('Return to my home','House',()=>switchDemo(false),'secondary'));modal.append(panel);document.body.append(modal);panel.querySelector('button').focus();return;
@@ -274,7 +371,26 @@ function navigate(key){
     if(key==='ArrowLeft')return focus(tabs[Math.max(0,i-1)]);
     if(key==='ArrowRight')return focus(tabs[i+1]||current);
   }
-  if(!modal && current?.matches('.sync-button'))return key==='ArrowDown'?focus(selectedRoom()):true;
+  // The header's buttons: left and right between them, down to the room tabs.
+  if(!modal && current?.matches('.sync-button, .settings-button')){
+    if(key==='ArrowDown')return focus(selectedRoom());
+    if(key==='ArrowLeft'&&current.matches('.sync-button'))return focus($('.settings-button'));
+    if(key==='ArrowRight'&&current.matches('.settings-button'))return focus($('.sync-button'));
+    return true;
+  }
+  // Settings: up and down along the sections, right into the options; left from the options' first column back.
+  if(modal?.side){
+    if(modal.side.contains(current)){
+      if(key==='ArrowRight')return focus(modal.firstOption());
+      if(key==='ArrowLeft')return true;
+      return focus(nearest(current,[...modal.side.querySelectorAll('button')],key)||current);
+    }
+    if(modal.content.contains(current)){
+      const next=nearest(current,[...modal.content.querySelectorAll('button')],key,key==='ArrowLeft'||key==='ArrowRight');
+      if(next)return focus(next);
+      return key==='ArrowLeft'?focus(modal.activeSection()):true;
+    }
+  }
   if(current?.matches('#all-off')){
     if(key==='ArrowUp')return focus(selectedRoom());
     if(key==='ArrowDown')return focus(firstDevice()||current);
@@ -334,6 +450,9 @@ window.tvBack=()=>{if(!back())window.HouseTV?.exit();};
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'||e.key==='BrowserBack'){e.preventDefault();back();return;}
   if(orbiting&&!modal){if(e.key.startsWith('Arrow')){e.preventDefault();world?.orbit(e.key==='ArrowLeft'?-4:e.key==='ArrowRight'?4:0,e.key==='ArrowUp'?3:e.key==='ArrowDown'?-3:0);}if(e.key==='Enter'){e.preventDefault();back();}return;}
+  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&document.activeElement?.matches('.opacity-row')){
+    e.preventDefault();setAppearance({...appearance,opacity:appearance.opacity+(e.key==='ArrowLeft'?-OPACITY_STEP:OPACITY_STEP)});return;
+  }
   if(e.key.startsWith('Arrow')){e.preventDefault();navigate(e.key);}
 });
 // On the TV, moving the remote over a text field must not bring up the on-screen keyboard and trap the D-pad
