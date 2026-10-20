@@ -95,14 +95,18 @@ public class MainActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
     @Override protected void onPause() { super.onPause(); if(engine!=null)engine.setActive(false); web.onPause(); web.evaluateJavascript("window.__houseTV?.world?.setRunning(false)", null); }
-    @Override protected void onResume() { super.onResume(); if(engine!=null)engine.setActive(true); if(web!=null){web.onResume();web.evaluateJavascript("window.__houseTV?.world?.setRunning(true)", null);} }
+    @Override protected void onResume() { super.onResume(); if(engine!=null)engine.setActive(true); if(web!=null){web.onResume();web.evaluateJavascript("window.__houseTV?.world?.setRunning(true)", null);applyAppearance();} }
+    /** The launcher may have changed its look while this app was in the background. */
+    private void applyAppearance() { try { web.evaluateJavascript("window.applyAppearance && window.applyAppearance(" + HomeService.appearance(prefs.getString("appearance", "{}")) + ")", null); } catch (Exception ignored) {} }
     @Override protected void onDestroy() { network.shutdownNow(); if(web!=null){web.destroy();web=null;} if(homeBound){unbindService(homeConnection);homeBound=false;} super.onDestroy(); }
     final class NativeBridge {
         @JavascriptInterface public String getConfig() {
-            try { return new JSONObject().put("mode","standalone").put("endpoint", localServer==null?"":localServer.endpoint()).put("token", prefs.getString("remoteKey", "")).put("version", engine==null?"":engine.version()).toString(); }
+            try { return new JSONObject().put("mode","standalone").put("endpoint", localServer==null?"":localServer.endpoint()).put("token", prefs.getString("remoteKey", "")).put("version", engine==null?"":engine.version()).put("appearance", HomeService.appearance(prefs.getString("appearance", "{}"))).toString(); }
             catch(Exception e){ return "{}"; }
         }
         @JavascriptInterface public void exit() { runOnUiThread(() -> finish()); }
+        /** The appearance menu chose a look: kept here, and newer than the launcher's until it changes its own. */
+        @JavascriptInterface public void setAppearance(String json) { try { HomeService.storeAppearance(MainActivity.this, json, true); } catch (Exception ignored) {} }
         /** Shows the on-screen keyboard for the focused text field (opened with OK, not by moving onto it). */
         @JavascriptInterface public void keyboard() {
             runOnUiThread(() -> { ((android.view.inputmethod.InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(web, 0); });

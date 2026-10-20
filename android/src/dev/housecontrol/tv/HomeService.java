@@ -25,12 +25,35 @@ public final class HomeService extends Service {
             for(Signature signature:p.signingInfo.getApkContentsSigners())if(java.util.Arrays.asList(Trust.LUMA).contains(SharingTransport.hex(MessageDigest.getInstance("SHA-256").digest(signature.toByteArray()))))return true;
         }}catch(Exception ignored){}return false;
     }
+    /**
+     * A look, checked: "dark" or "light" mode, a glass opacity of 0–100 % (at least 40 % in light mode, whose dark
+     * text needs it), a bundled wallpaper's file name ("" for the app's own) and when it was chosen. Anything else is
+     * dark at 15 %.
+     */
+    static JSONObject appearance(String raw)throws JSONException{
+        JSONObject in;try{in=new JSONObject(raw==null?"{}":raw);}catch(JSONException e){in=new JSONObject();}
+        boolean light="light".equals(in.optString("mode"));
+        String wallpaper=in.optString("wallpaper","");if(!wallpaper.matches("[a-z0-9_]{1,64}\\.jpg"))wallpaper="";
+        return new JSONObject().put("mode",light?"light":"dark").put("opacity",Math.max(light?40:0,Math.min(100,in.optInt("opacity",15)))).put("wallpaper",wallpaper).put("at",Math.max(0L,in.optLong("at",0L)));
+    }
+    /**
+     * Keeps a look from the launcher ({@code fromApp} false) or from this app's own appearance menu (true, stamped
+     * now). Whichever was chosen last wins: the launcher sends its look every time it connects, which must not undo
+     * a newer choice made in the app.
+     */
+    static void storeAppearance(Context c,String raw,boolean fromApp)throws JSONException{
+        android.content.SharedPreferences p=c.getSharedPreferences("connection",MODE_PRIVATE);
+        JSONObject next=appearance(raw);if(fromApp)next.put("at",System.currentTimeMillis());
+        if(!fromApp&&next.optLong("at")<appearance(p.getString("appearance","{}")).optLong("at"))return;
+        p.edit().putString("appearance",next.toString()).apply();
+    }
     @Override public void onCreate(){super.onCreate();try{initialize(this);}catch(Exception ignored){}}
     @Override public IBinder onBind(Intent intent){if(sharedEngine!=null&&!ACTIVITY_BIND.equals(intent.getAction()))sharedEngine.setWidgetActive(true);return new Binder(){
         @Override protected boolean onTransact(int code,Parcel data,Parcel reply,int flags)throws RemoteException{
             if(!trusted(Binder.getCallingUid())){reply.writeException(new SecurityException("Only a paired launcher may access this home."));return true;}
             JSONObject result;
             try{
+                if(code==5){storeAppearance(HomeService.this,data.readString(),false);reply.writeNoException();reply.writeString("{\"ok\":true}");return true;}
                 if(sharedEngine==null)throw new IllegalStateException("Open House Control to finish TV setup.");
                 if(code==1){result=sharedEngine.home();}
                 else if(code==2){String id=data.readString();result=sharedEngine.action(new JSONObject().put("kind","scene").put("id",id));}
