@@ -119,11 +119,26 @@ function tiles(base, perSide, grout) {
   });
 }
 
+function grass(base) {
+  return canvasTexture(512, (g, s) => {
+    const rand = rng(base.charCodeAt(1) * 13);
+    g.fillStyle = base;
+    g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 2600; i++) {
+      g.fillStyle = shade(base, (rand() - 0.5) * 0.16);
+      g.fillRect(rand() * s, rand() * s, 2 + rand() * 3, 5 + rand() * 7);
+    }
+  });
+}
+
 const FLOORS = {
   oak: () => planks('#c7a47c'),
   walnut: () => planks('#94705a'),
   tile: () => tiles('#d5dade', 4, '#aab0b8'),
   stone: () => tiles('#a2a7ae', 3, '#7c828b'),
+  tileWhite: () => tiles('#eceeef', 3, '#c4c9cf'),
+  tileBlue: () => tiles('#8fbbe0', 4, '#6b94bb'),
+  grass: () => grass('#6e9b4c'),
 };
 
 const floorMaterials = new Map();

@@ -25,7 +25,7 @@ export const SERVICES = {
   hue: { name: 'Philips Hue', short: 'Hue' },
   homekit: { name: 'Apple Home', short: 'Apple Home' },
 };
-export const FLOOR_KINDS = ['oak', 'walnut', 'tile', 'stone'];
+export const FLOOR_KINDS = ['oak', 'walnut', 'tile', 'stone', 'tileWhite', 'tileBlue'];
 
 // The plan exactly as written on disk (the editor works on this form).
 export async function loadRawConfig() {
@@ -68,7 +68,8 @@ export function normalize(raw) {
       `Room "${r.id}" needs "rect": [x, z, width, depth]`);
     const [x, z, w, d] = r.rect;
     need(w > 0 && d > 0, `Room "${r.id}" has an empty rect`);
-    return { id: r.id, name: r.name || r.id, x, z, w, d, floor: r.floor || 'oak' };
+    // `wall` optionally paints (or tiles) the inner faces of the room's walls, e.g. "#3f7fc1".
+    return { id: r.id, name: r.name || r.id, x, z, w, d, floor: r.floor || 'oak', wall: typeof r.wall === 'string' ? r.wall : null };
   });
   const roomIds = new Set(rooms.map((r) => r.id));
 
@@ -118,6 +119,8 @@ export function normalize(raw) {
     rooms,
     openings,
     furniture: raw.furniture || [],
+    // Optional lawn around the house: { margin, color }.
+    yard: raw.yard ? { margin: raw.yard.margin ?? 1.5, color: raw.yard.color || '#6e9b4c' } : null,
     lights,
     acs,
     scenes,

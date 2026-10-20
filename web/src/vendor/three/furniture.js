@@ -269,6 +269,53 @@ const builders = {
     );
   },
 
+  tree({ height = 3, color = '#4f7f3a' }) {
+    const rand = rng(Math.round(height * 1000 + color.charCodeAt(3)));
+    const g = group(at(cyl(0.07, 0.11, height * 0.5, mat('#6b4a32', { rough: 0.9, emissive: '#6b4a32', emissiveIntensity: 0.3 }), 10), 0, 0, 0));
+    for (let i = 0; i < 4; i++) {
+      const r = height * (0.2 + rand() * 0.08);
+      const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), mat(i % 2 ? color : darker(color, 0.85), { rough: 1, emissive: color, emissiveIntensity: 0.3 }));
+      blob.position.set((rand() - 0.5) * r, height * (0.58 + i * 0.1), (rand() - 0.5) * r);
+      g.add(blob);
+    }
+    return g;
+  },
+
+  bush({ size = 0.7, color = '#5b8a3c' }) {
+    const rand = rng(Math.round(size * 1000 + color.charCodeAt(2)));
+    const g = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const r = size * (0.28 + rand() * 0.12);
+      const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), mat(i ? color : darker(color, 0.85), { rough: 1, emissive: color, emissiveIntensity: 0.3 }));
+      blob.position.set((i - 1) * size * 0.25, r * 0.8, (rand() - 0.5) * size * 0.3);
+      g.add(blob);
+    }
+    return g;
+  },
+
+  // Stepping stones along z.
+  path({ width = 0.9, depth = 3 }) {
+    const g = new THREE.Group();
+    const stone = mat('#b9b4aa', { rough: 0.9, emissive: '#b9b4aa', emissiveIntensity: 0.3 });
+    for (let z = -depth / 2 + 0.25; z < depth / 2; z += 0.55) g.add(at(box(width * 0.7, 0.03, 0.38, stone, { r: 0.04 }), 0, 0, z));
+    return g;
+  },
+
+  // Shower tray in a corner: back (-z) and left (-x) against walls, glass on the other two sides.
+  shower({ width = 0.9, depth = 0.9 }) {
+    const glass = new THREE.MeshLambertMaterial({ color: '#cfe6f2', transparent: true, opacity: 0.25 });
+    const chrome = mat(METAL, { rough: 0.2, metal: 0.9 });
+    return group(
+      at(box(width, 0.06, depth, mat(WHITE, { rough: 0.3 }), { r: 0.02 }), 0, 0, 0),
+      at(cyl(0.04, 0.04, 0.006, mat('#5d6168', { rough: 0.4 }), 16), 0, 0.06, 0),
+      at(box(width, 1.9, 0.012, glass, { r: 0 }), 0, 0.06, depth / 2 - 0.006),
+      at(box(0.012, 1.9, depth, glass, { r: 0 }), width / 2 - 0.006, 0.06, 0),
+      at(box(0.03, 1.96, 0.03, chrome, { r: 0 }), width / 2 - 0.015, 0, depth / 2 - 0.015),
+      at(cyl(0.012, 0.012, 1.9, chrome, 10), -width / 4, 0.1, -depth / 2 + 0.04),
+      at(cyl(0.09, 0.06, 0.03, chrome, 20), -width / 4, 1.98, -depth / 2 + 0.12),
+    );
+  },
+
   toilet() {
     const c = mat(WHITE, { rough: 0.25 });
     const bowl = at(cyl(0.19, 0.13, 0.4, c), 0, 0, 0.1);
@@ -276,6 +323,44 @@ const builders = {
     const lid = at(cyl(0.2, 0.2, 0.03, c), 0, 0.4, 0.1);
     lid.scale.z = 1.25;
     return group(at(box(0.38, 0.78, 0.17, c, { r: 0.03 }), 0, 0, -0.24), bowl, lid);
+  },
+
+  // A table pushed against a wall with its back (-z): chairs at the front and, from three on, at the ends.
+  table({ width = 1.2, depth = 0.8, chairs = 3 }) {
+    const g = group(
+      at(box(width, 0.04, depth, mat('#b48d63', { rough: 0.55 }), { r: 0.015 }), 0, 0.72, 0),
+      ...legs(width, depth, 0.72, mat(BLACK, { rough: 0.5 }), 0.06, 0.022),
+    );
+    const ends = chairs >= 3 ? 2 : 0;
+    const front = chairs - ends;
+    for (let i = 0; i < front; i++) {
+      const c = chair('#2b2e37');
+      c.position.set(-width / 2 + (width / front) * (i + 0.5), 0, depth / 2 + 0.12);
+      c.rotation.y = Math.PI;
+      g.add(c);
+    }
+    for (const side of ends ? [-1, 1] : []) {
+      const c = chair('#2b2e37');
+      c.position.set(side * (width / 2 + 0.12), 0, 0);
+      c.rotation.y = -side * Math.PI / 2;
+      g.add(c);
+    }
+    return g;
+  },
+
+  stove({ width = 0.76 }) {
+    const body = mat('#d9dbde', { rough: 0.4, metal: 0.3 });
+    const dark = mat('#17181c', { rough: 0.2 });
+    const g = group(
+      at(box(width, 0.9, 0.6, body, { r: 0.015 }), 0, 0, 0),
+      at(box(width - 0.02, 0.012, 0.56, dark, { r: 0 }), 0, 0.9, 0),
+      at(box(width, 0.16, 0.05, body, { r: 0.01 }), 0, 0.9, -0.275),
+      at(box(width * 0.78, 0.4, 0.01, dark, { r: 0 }), 0, 0.2, 0.3),
+      at(box(width * 0.7, 0.025, 0.03, mat(METAL, { rough: 0.25, metal: 0.9 }), { r: 0.008 }), 0, 0.68, 0.32),
+    );
+    for (const x of [-1, 1]) for (const z of [-1, 1]) g.add(at(cyl(0.085, 0.085, 0.014, mat('#3a3c42', { rough: 0.5 }), 20), x * width / 4, 0.912, z * 0.13 + 0.03));
+    for (let i = 0; i < 4; i++) g.add(at(cyl(0.02, 0.02, 0.02, mat(BLACK), 12), -width * 0.3 + i * width * 0.2, 0.96, -0.245));
+    return g;
   },
 
   desk({ width = 1.4 }) {
@@ -348,6 +433,12 @@ export function footprint(item) {
     case 'desk': return [w || 1.4, 0.65];
     case 'wardrobe': return [w || 1.6, 0.6];
     case 'bookshelf': return [w || 1, 0.32];
+    case 'shower': return [w || 0.9, item.depth || 0.9];
+    case 'table': return [w || 1.2, item.depth || 0.8];
+    case 'stove': return [w || 0.76, 0.65];
+    case 'tree': return [(item.height || 3) * 0.55, (item.height || 3) * 0.55];
+    case 'bush': return [item.size || 0.7, item.size || 0.7];
+    case 'path': return [w || 0.9, item.depth || 3];
     default: return [0.6, 0.6];
   }
 }

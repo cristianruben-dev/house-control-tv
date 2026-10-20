@@ -20,10 +20,10 @@ function wallSegments(config) {
   };
 
   for (const r of config.rooms) {
-    line('x', r.z).edges.push({ a: r.x, b: r.x + r.w, inside: 1 });
-    line('x', r.z + r.d).edges.push({ a: r.x, b: r.x + r.w, inside: -1 });
-    line('z', r.x).edges.push({ a: r.z, b: r.z + r.d, inside: 1 });
-    line('z', r.x + r.w).edges.push({ a: r.z, b: r.z + r.d, inside: -1 });
+    line('x', r.z).edges.push({ a: r.x, b: r.x + r.w, inside: 1, room: r.id });
+    line('x', r.z + r.d).edges.push({ a: r.x, b: r.x + r.w, inside: -1, room: r.id });
+    line('z', r.x).edges.push({ a: r.z, b: r.z + r.d, inside: 1, room: r.id });
+    line('z', r.x + r.w).edges.push({ a: r.z, b: r.z + r.d, inside: -1, room: r.id });
   }
   for (const o of config.openings) {
     const alongX = o.from[1] === o.to[1];
@@ -48,10 +48,11 @@ function wallSegments(config) {
         kind: covering.length > 1 ? 'interior' : 'exterior',
         inside: covering[0].inside,
         opening: l.openings.find((o) => o.a < mid && mid < o.b) || null,
+        rooms: covering.map((e) => e.room).sort().join(),
       };
       const prev = run[run.length - 1];
       if (prev && Math.abs(prev.b - seg.a) < EPS && prev.kind === seg.kind
-        && prev.inside === seg.inside && prev.opening === seg.opening) prev.b = seg.b;
+        && prev.inside === seg.inside && prev.opening === seg.opening && prev.rooms === seg.rooms) prev.b = seg.b;
       else run.push(seg);
     }
     // Free ends get a small extension so corners close up.
@@ -71,11 +72,22 @@ export function buildHouse(config, camDir) {
   const Hi = Math.min(config.interiorWallHeight, H);
   const { minX, minZ, maxX, maxZ } = config.bounds;
 
-  // Plinth the model stands on.
-  const plinth = box(maxX - minX + 0.7, 0.3, maxZ - minZ + 0.7, mat('#141927', { rough: 0.9 }), { r: 0.12 });
-  at(plinth, (minX + maxX) / 2, -0.305, (minZ + maxZ) / 2);
+  // Plinth the model stands on: dark, or soil topped with a lawn when the plan has a yard.
+  const m = config.yard ? config.yard.margin : 0.35;
+  const plinth = box(maxX - minX + m * 2, 0.3, maxZ - minZ + m * 2, mat(config.yard ? '#4a3a2a' : '#141927', { rough: 0.9 }), { r: 0.12 });
+  at(plinth, (minX + maxX) / 2, config.yard ? -0.325 : -0.305, (minZ + maxZ) / 2); // a lawn sits on top, under the floors
   plinth.receiveShadow = true;
   group.add(plinth);
+  if (config.yard) {
+    const lawn = floorMesh({ x: minX - m + 0.1, z: minZ - m + 0.1, w: maxX - minX + m * 2 - 0.2, d: maxZ - minZ + m * 2 - 0.2 }, 'grass');
+    lawn.position.y = -0.012;
+    const grass = lawn.material.clone();
+    grass.emissive = new THREE.Color('#ffffff');
+    grass.emissiveMap = grass.map;
+    grass.emissiveIntensity = 0.32;
+    lawn.material = grass;
+    group.add(lawn);
+  }
 
   for (const room of config.rooms) {
     const floor = floorMesh(room, room.floor);
@@ -93,6 +105,21 @@ export function buildHouse(config, camDir) {
     emissive: '#3d5fae', emissiveIntensity: 0.5,
   });
   const frame = mat('#2c3142', { rough: 0.6 });
+
+  // A room's `wall` colour paints only the faces that look into that room.
+  const painted = new Map();
+  const paint = (room) => {
+    if (!room?.wall) return wallBody;
+    if (!painted.has(room.wall)) painted.set(room.wall, mat(room.wall, { rough: 0.6 }));
+    return painted.get(room.wall);
+  };
+  const roomAt = (x, z) => config.rooms.find((r) => x > r.x && x < r.x + r.w && z > r.z && z < r.z + r.d);
+  // BoxGeometry faces: +x, -x, +y, -y, +z, -z.
+  const facesOf = (s) => {
+    const mid = (s.a + s.b) / 2;
+    if (s.axis === 'x') return [wallBody, wallBody, wallCap, wallBody, paint(roomAt(mid, s.c + 0.01)), paint(roomAt(mid, s.c - 0.01))];
+    return [paint(roomAt(s.c + 0.01, mid)), paint(roomAt(s.c - 0.01, mid)), wallCap, wallBody, wallBody, wallBody];
+  };
 
   // A wall piece running from a..b along its axis, between heights y0..y1.
   const piece = (s, a, b, y0, y1, t, materials = wallMats) => {
@@ -116,9 +143,10 @@ export function buildHouse(config, camDir) {
     const a = s.a - (s.freeA ? EXT_T / 2 : 0);
     const b = s.b + (s.freeB ? EXT_T / 2 : 0);
     const type = s.opening?.type;
+    const faces = facesOf(s);
 
     if (near) {
-      if (type !== 'door') piece(s, a, b, 0, CURB, t);
+      if (type !== 'door') piece(s, a, b, 0, CURB, t, faces);
       continue;
     }
     if (type === 'door' || type === 'open') continue;
@@ -126,8 +154,8 @@ export function buildHouse(config, camDir) {
     const height = exterior ? H : Hi;
     if (type === 'window' && exterior) {
       const { sill, head } = s.opening;
-      piece(s, a, b, 0, sill, t);
-      piece(s, a, b, Math.min(head, H), H, t);
+      piece(s, a, b, 0, sill, t, faces);
+      piece(s, a, b, Math.min(head, H), H, t, faces);
       const pane = piece(s, a, b, sill, head, 0.03, glass);
       pane.castShadow = false;
       const fw = 0.05;
@@ -138,7 +166,7 @@ export function buildHouse(config, camDir) {
     }
     if (type === 'window') continue; // a window in an interior wall is just a gap
 
-    piece(s, a, b, 0, height, t);
+    piece(s, a, b, 0, height, t, faces);
     // Interior walls are drawn cut low, but lamps should still be contained by the
     // real, full-height wall: an invisible shadow caster fills in the missing part.
     if (!exterior && Hi < H) piece(s, a, b, Hi, H, 0.04, blocker).receiveShadow = false;
