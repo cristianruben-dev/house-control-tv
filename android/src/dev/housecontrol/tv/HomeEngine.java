@@ -14,7 +14,6 @@ final class HomeEngine {
     final HomeAssistantClient ha;
     final HueClient hue;
     JSONObject plan,state;
-    DemoHome demoHome;
     String revision="",syncFingerprint="";
     long lastPoll=0;
     volatile boolean polling=false;
@@ -28,14 +27,11 @@ final class HomeEngine {
         context=c.getApplicationContext();
         ha=new HomeAssistantClient(new SecureVault(context,"homeassistant.enc"));hue=new HueClient(new SecureVault(context,"hue.enc"));
         ha.onChange=this::localChanged;hue.onChange=this::localChanged;ha.active=()->polling;hue.active=()->polling;
-        if(context.getSharedPreferences("presentation",0).getBoolean("demo",false))loadDemo();
         JSONObject saved=read("home.json");if(saved!=null){plan=saved.getJSONObject("plan");state=saved.getJSONObject("state");revision=saved.optString("revision");syncFingerprint=saved.optString("syncFingerprint");}
         watchLinks();
         localScheduler.scheduleWithFixedDelay(()->{if(polling&&(ha.connected()||hue.connected()))try{pollLocal();}catch(Exception ignored){}},2,5,TimeUnit.SECONDS);
     }
     static String safe(Exception e){return e.getMessage()==null?"Device request failed.":e.getMessage();}
-    void loadDemo()throws Exception{String name=context.getSharedPreferences("presentation",0).getString("demoPlan","demo-loft");if(!name.matches("[a-z-]{1,24}"))name="demo-loft";try(InputStream in=context.getAssets().open("web/plans/"+name+".json")){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)out.write(b,0,n);demoHome=new DemoHome(new JSONObject(new String(out.toByteArray(),SharingTransport.UTF8)));}}
-    JSONObject setDemo(JSONObject body)throws Exception{synchronized(actionLock){synchronized(lock){if(body.has("plan"))context.getSharedPreferences("presentation",0).edit().putString("demoPlan",body.optString("plan","demo-loft")).commit();if(body.optBoolean("enabled"))loadDemo();else demoHome=null;context.getSharedPreferences("presentation",0).edit().putBoolean("demo",demoHome!=null).commit();return home();}}}
     synchronized void setActive(boolean on){activityActive=on;polling=activityActive||widgetActive;}
     synchronized void setWidgetActive(boolean on){widgetActive=on;polling=activityActive||widgetActive;}
     JSONObject read(String name)throws Exception{AtomicFile f=new AtomicFile(new File(context.getFilesDir(),name));return f.getBaseFile().exists()?new JSONObject(new String(f.readFully(),SharingTransport.UTF8)):null;}
@@ -65,7 +61,7 @@ final class HomeEngine {
         watchLinks();localChanged();
     }
     JSONObject home()throws Exception{
-        synchronized(lock){if(demoHome!=null)return demoHome.home().put("realCommandAttempts",ha.commandAttempts+hue.commandAttempts).put("syncFingerprint",syncFingerprint);if(plan==null)throw new IOException("Import your home from Mac once, or upload a floor plan from your phone.");
+        synchronized(lock){if(plan==null)throw new IOException("Import your home from Mac once, or upload a floor plan from your phone.");
             JSONObject safePlan=CloudMapper.copy(plan);Set<String> needed=new TreeSet<>();
             for(String section:new String[]{"lights","acs"}){JSONArray a=safePlan.optJSONArray(section);if(a==null)continue;for(int i=0;i<a.length();i++){JSONObject d=a.getJSONObject(i);String via=via(d);boolean real=!via.isEmpty();if(real){d.put("via",via);if(!via.equals("homekit"))needed.add(via);}d.put("linked",real);d.remove("link");d.remove("sensor");}}
             List<String> on=new ArrayList<>(),off=new ArrayList<>();for(String s:needed)(serviceReady(s)?on:off).add(title(s));
@@ -95,9 +91,8 @@ final class HomeEngine {
         else throw new IOException("This device uses a connection the TV does not know.");
         touched.put(id,System.currentTimeMillis());commit(section,id,patch);
     }
-    JSONObject demoAction(JSONObject body)throws Exception{synchronized(actionLock){synchronized(lock){if(demoHome==null)throw new IOException("Demo home is not active. No real-device command was sent.");}return action(body);}}
     JSONObject action(JSONObject action)throws Exception{
-        synchronized(actionLock){synchronized(lock){if(demoHome!=null){JSONObject result=demoHome.action(action);return result.put("home",home());}}String kind=action.getString("kind"),id=action.optString("id");
+        synchronized(actionLock){String kind=action.getString("kind"),id=action.optString("id");
             if(kind.equals("light")||kind.equals("acPower")){Object value=action.get("on");if(!(value instanceof Boolean))throw new IOException("Expected an explicit on/off value.");change(kind.equals("light")?"lights":"acs",id,new JSONObject().put("on",value));}
             else if(kind.equals("lightSet")){JSONObject patch=new JSONObject();for(String key:new String[]{"on","brightness","temp","color"})if(action.has(key))patch.put(key,action.get(key));if(patch.length()==0)throw new IOException("Nothing to change.");change("lights",id,patch);}
             else if(kind.equals("acTarget")){JSONObject d; synchronized(lock){d=find("acs",id);}Object value=action.get("target");if(!(value instanceof Number))throw new IOException("Invalid temperature.");double target=((Number)value).doubleValue();if(!Double.isFinite(target)||target<d.optInt("min",16)||target>d.optInt("max",30))throw new IOException("Temperature is outside this unit’s range.");change("acs",id,new JSONObject().put("target",Math.round(target)));}
@@ -138,7 +133,7 @@ final class HomeEngine {
         if(!errors.isEmpty())throw new IOException(String.join("; ",errors));
     }
     void pollLocal()throws Exception{
-        JSONObject p;synchronized(lock){if(demoHome!=null||plan==null)return;p=CloudMapper.copy(plan);}
+        JSONObject p;synchronized(lock){if(plan==null)return;p=CloudMapper.copy(plan);}
         Set<String> haIds=new HashSet<>(),hueLights=new HashSet<>(),hueSensors=new HashSet<>();
         for(String section:new String[]{"lights","acs"}){JSONArray a=p.optJSONArray(section);if(a==null)continue;for(int i=0;i<a.length();i++){JSONObject d=a.getJSONObject(i),l=d.optJSONObject("link"),s=section.equals("acs")?d.optJSONObject("sensor"):null;
             if(l!=null&&!l.optString("id").isEmpty()){if(l.optString("service").equals(LocalMapper.HA))haIds.add(l.getString("id"));else if(l.optString("service").equals(LocalMapper.HUE)&&section.equals("lights"))hueLights.add(l.getString("id"));}
@@ -147,7 +142,7 @@ final class HomeEngine {
         long started=System.currentTimeMillis();Map<String,JSONObject> fromHa=Collections.emptyMap(),fromHue=Collections.emptyMap();
         if(ha.connected()&&!haIds.isEmpty())try{fromHa=ha.read(haIds);ha.lastError="";}catch(Exception e){ha.lastError=safe(e);}
         if(hue.connected()&&!(hueLights.isEmpty()&&hueSensors.isEmpty()))try{fromHue=hue.read(hueLights,hueSensors);hue.lastError="";}catch(Exception e){hue.lastError=safe(e);}
-        synchronized(lock){if(demoHome!=null||plan==null)return;String before=state.toString();
+        synchronized(lock){if(plan==null)return;String before=state.toString();
             for(String section:new String[]{"lights","acs"}){JSONArray a=p.optJSONArray(section);if(a==null)continue;for(int i=0;i<a.length();i++){JSONObject d=a.getJSONObject(i);String id=d.getString("id");JSONObject target=state.getJSONObject(section).optJSONObject(id);
                 if(target==null||touched.getOrDefault(id,0L)>=started)continue;
                 JSONObject l=d.optJSONObject("link"),s=section.equals("acs")?d.optJSONObject("sensor"):null;
@@ -173,7 +168,7 @@ final class HomeEngine {
             case "/api/homeassistant/connect":ha.connect(body.optString("url"),body.optString("token"));watchLinks();localChanged();return connections();
             case "/api/homeassistant/disconnect":ha.disconnect();return connections();
             case "/api/hue/pair":try{hue.pair(body.optString("host"),body.optString("bridgeId"),body.optString("name"));}catch(HueClient.ButtonNotPressed e){return connections().put("buttonRequired",true);}watchLinks();localChanged();return connections();
-            case "/api/hue/disconnect":hue.disconnect();return connections();case "/api/demo/action":return demoAction(body);case "/api/demo":return setDemo(body);case "/api/home":return home().put("appVersion",version());case "/api/action":return action(body);case "/api/import":importHome(body);return new JSONObject().put("ok",true).put("home",home());default:throw new IOException("Unknown request.");}
+            case "/api/hue/disconnect":hue.disconnect();return connections();case "/api/home":return home().put("appVersion",version());case "/api/action":return action(body);case "/api/import":importHome(body);return new JSONObject().put("ok",true).put("home",home());default:throw new IOException("Unknown request.");}
     }
     String version(){try{return context.getPackageManager().getPackageInfo(context.getPackageName(),0).versionName;}catch(Exception e){return "";}}
     void close(){localScheduler.shutdownNow();}

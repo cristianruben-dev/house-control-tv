@@ -4,7 +4,7 @@ import org.json.*;
 import java.util.*;
 import java.io.IOException;
 
-/** Plan-state helpers shared by the engine and the demo home: copies, merges and validated patches. */
+/** Plan-state helpers for the engine: copies, merges and validated patches. */
 final class CloudMapper {
     static JSONObject copy(JSONObject j)throws JSONException{return new JSONObject(j.toString());}
     static void merge(JSONObject to,JSONObject from)throws JSONException{if(from==null)return;Iterator<String> keys=from.keys();while(keys.hasNext()){String k=keys.next();to.put(k,from.get(k));}}

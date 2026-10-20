@@ -15,16 +15,6 @@ public class StandaloneTests {
   check(CloudMapper.difference(new JSONObject().put("on",false),new JSONObject().put("on",false)).length()==0,"Scene skips already satisfied switch");
   check(CloudMapper.difference(new JSONObject().put("on",true),new JSONObject().put("on",false)).getBoolean("on"),"Scene keeps required switch");
   check(CloudMapper.difference(new JSONObject().put("target",24),new JSONObject().put("target",24.0)).length()==0,"Scene compares numeric values");
-  JSONObject example=new JSONObject(new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("web/public/plans/demo-loft.json")),SharingTransport.UTF8));
-  DemoHome demo=new DemoHome(example);JSONObject demoSnapshot=demo.action(new JSONObject().put("kind","scene").put("id","movie")).getJSONObject("home");
-  check(demoSnapshot.getBoolean("demo")&&!demoSnapshot.getBoolean("realDeviceConnections"),"Demo has no real connections");
-  JSONObject demoLights=demoSnapshot.getJSONObject("state").getJSONObject("lights");int lit=0;Iterator<String> lightIds=demoLights.keys();while(lightIds.hasNext())if(demoLights.getJSONObject(lightIds.next()).getBoolean("on"))lit++;
-  check(lit==1&&demoLights.getJSONObject("main.tv").getBoolean("on"),"Demo Movie only lights the TV strip");
-  demoLights=demo.action(new JSONObject().put("kind","scene").put("id","night")).getJSONObject("home").getJSONObject("state").getJSONObject("lights");
-  check(demoLights.getJSONObject("main.bed").getBoolean("on")&&demoLights.getJSONObject("main.bed.left").getBoolean("on"),"Demo Night has both bedside lamps");
-  JSONObject again=demo.action(new JSONObject().put("kind","scene").put("id","night")).getJSONObject("home");demoLights=again.getJSONObject("state").getJSONObject("lights");
-  check(!demoLights.getJSONObject("main.bed").getBoolean("on")&&!demoLights.getJSONObject("main.bed.left").getBoolean("on")&&again.getJSONObject("state").isNull("scene"),"Running the active scene again switches its lights off");
-  example.getJSONArray("lights").getJSONObject(0).put("link",new JSONObject().put("service","hue").put("id","never-send"));rejected=false;try{new DemoHome(example);}catch(IllegalArgumentException e){rejected=true;}check(rejected,"Real bindings rejected by demo constructor");
   localMappings();
   System.out.println(tests+" standalone protocol tests passed.");
  }

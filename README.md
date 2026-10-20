@@ -33,13 +33,10 @@
   has it seconds later. The Mac's Home Assistant and Hue connections come along, so there is nothing to set up twice.
 - **On the home screen.** With [Luma](https://github.com/0xProbabillity/luma-tv), the TV's Home shows five scene
   buttons and a live preview of the 3D model; *Movie* can dim the lights and open Netflix.
-- **Try it without touching anything.** *Sync & connect → Explore demo home* loads a furnished demo loft that has no
-  connection to any device.
 
 <p align="center">
   <img src="docs/tv-climate.jpg" width="49%" alt="An air conditioner card: power and target temperature">
   <img src="docs/tv-services.jpg" width="49%" alt="Sync & connect: Home Assistant connected, a Hue Bridge ready to pair">
-  <br><sub>Screenshots use the bundled demo home.</sub>
 </p>
 
 | Platform | How the TV connects |
@@ -155,7 +152,7 @@ building. Luma never receives a password, token or the phone key.
 ./tv.sh test
 ```
 
-Runs the Java tests (plan patches, the demo home, Home Assistant and Hue mappings and validation), then the real Home Assistant and Hue clients against [`tools/mock_hubs.py`](tools/mock_hubs.py)
+Runs the Java tests (plan patches, Home Assistant and Hue mappings and validation), then the real Home Assistant and Hue clients against [`tools/mock_hubs.py`](tools/mock_hubs.py)
 on loopback (pairing, reads, commands, live updates, certificate pinning), then the Mac sync tests.
 `python3 tools/mock_hubs.py --host 0.0.0.0 --auto` runs the pretend Home Assistant (port 18123, prints its token)
 and Hue Bridge (port 18443) for trying the TV without hardware.

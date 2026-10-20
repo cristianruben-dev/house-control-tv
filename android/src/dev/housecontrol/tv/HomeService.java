@@ -57,7 +57,6 @@ public final class HomeService extends Service {
                 if(sharedEngine==null)throw new IllegalStateException("Open House Control to finish TV setup.");
                 if(code==1){result=sharedEngine.home();}
                 else if(code==2){String id=data.readString();result=sharedEngine.action(new JSONObject().put("kind","scene").put("id",id));}
-                else if(code==4){String id=data.readString();result=sharedEngine.demoAction(new JSONObject().put("kind","scene").put("id",id));}
                 else if(code==3){sharedEngine.setWidgetActive(data.readInt()!=0);result=new JSONObject().put("ok",true);}
                 else return super.onTransact(code,data,reply,flags);
             }catch(Exception error){try{result=new JSONObject().put("error",HomeEngine.safe(error));}catch(Exception ignored){result=new JSONObject();}}

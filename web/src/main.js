@@ -59,7 +59,7 @@ function button(label, name, action, cls = '') {
   if (name) b.append(icon(name)); if (label) b.append(el('span', '', label)); b.onclick = action; return b;
 }
 const modes = { cool: 'Cooling', heat: 'Heating', auto: 'Auto', dry: 'Dry', fan: 'Fan' };
-let config, bundle, world, resizeObserver, deviceKind = 'lights', room = 'all', online = false, demo = false, busy = false, orbiting = false, modal = null, lastFocus = null;
+let config, bundle, world, resizeObserver, deviceKind = 'lights', room = 'all', online = false, busy = false, orbiting = false, modal = null, lastFocus = null;
 let store = { state: { lights: {}, acs: {}, scene: null }, listeners: new Set(), on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); } };
 let lightNodes = new Map(), acNodes = new Map(), sceneNodes = new Map();
 let toastTimer;
@@ -73,33 +73,14 @@ function apply(next) {
   store.state = structuredClone(next.state); if (changed) emit(); update();
   try { localStorage.setItem('house-tv:last-home:v1', JSON.stringify(next)); } catch {}
 }
-function available() { return demo || online; }
+function available() { return online; }
 async function command(action) {
   if (busy) return;
   if (!available()) { toast(bundle?.mode === 'standalone' ? (bundle.connectionLabel || 'Connect your devices') + ' in Sync & connect.' : 'Open House Control and TV Bridge on your Mac to control devices.'); return; }
   busy = true; app.classList.add('pending');
   try {
-    if (demo) {
-      const s = store.state;
-      if (action.kind === 'light') { s.lights[action.id].on = action.on; s.scene = null; }
-      if (action.kind === 'allLights' || action.kind === 'room') { for (const d of config.lights.filter(d => action.kind !== 'room' || d.room === action.id)) s.lights[d.id].on = action.on; s.scene = null; }
-      if (action.kind === 'acPower') s.acs[action.id].on = action.on;
-      if (action.kind === 'acTarget') s.acs[action.id].target = action.target;
-      if (action.kind === 'scene' && s.scene === action.id) {
-        // The active scene again switches it off: the lights it turns on go off.
-        const scene = config.scenes.find(x => x.id === action.id);
-        for (const [id, value] of Object.entries(s.lights)) if ({ ...(scene.lights['*'] || {}), ...(scene.lights[id] || {}) }.on) value.on = false;
-        s.scene = null;
-      } else if (action.kind === 'scene') {
-        const scene = config.scenes.find(s => s.id === action.id);
-        for (const key of ['lights','acs']) for (const [id, value] of Object.entries(s[key])) Object.assign(value, scene[key]['*'] || {}, scene[key][id] || {});
-        s.scene = scene.id;
-      }
-      emit(); update();
-    } else {
-      const result = await api(bundle?.mode==='demo'?'/api/demo/action':'/api/action', action); apply(result.home);
-      toast(result.direct ? (action.kind === 'acTarget' ? 'Temperature saved on TV' : 'Device settings updated directly') : 'Command sent to House Control');
-    }
+    const result = await api('/api/action', action); apply(result.home);
+    toast(result.direct ? (action.kind === 'acTarget' ? 'Temperature saved on TV' : 'Device settings updated directly') : 'Command sent to House Control');
   } catch (error) { toast(error.message); }
   finally { busy = false; app.classList.remove('pending'); }
 }
@@ -138,8 +119,8 @@ function lightTile(d) {
 function update() {
   if (!config || !$('#status')) return;
   const on = Object.values(store.state.lights).filter(s => s.on).length;
-  $('#status').textContent = (demo || bundle?.mode === 'demo') ? 'Demo · no real devices' : bundle?.mode === 'standalone' ? (bundle.connectionLabel || (online ? 'TV connected' : 'Connect your devices on TV')) : online ? 'Synced with Mac' : 'Mac offline · view only';
-  $('#status').classList.toggle('offline', !online && !demo);
+  $('#status').textContent = bundle?.mode === 'standalone' ? (bundle.connectionLabel || (online ? 'TV connected' : 'Connect your devices on TV')) : online ? 'Synced with Mac' : 'Mac offline · view only';
+  $('#status').classList.toggle('offline', !online);
   $('#lights-on').textContent = on;
   $('#lights-total').textContent = 'of ' + config.lights.length + ' on';
   $('#active-scene').textContent = config.scenes.find(s => s.id === store.state.scene)?.name || 'Manual control';
@@ -265,9 +246,6 @@ function openSettings(start='theme'){
   tabs[start].focus();
 }
 async function openSync(){
-  if(bundle?.mode==='demo'){
-    lastFocus=document.activeElement;modal=el('div','modal-backdrop');const panel=el('section','sync-panel');panel.append(el('p','eyebrow','ISOLATED DEMO'),el('h2','','A home you can safely explore'),el('p','sync-description','This demo has no real-device bindings. All switches and scenes affect the demo model only.'),button('Back to demo','ArrowLeft',closeModal,'primary'),button('Reset demo','RefreshCw',()=>switchDemo(true),'secondary'),button('Return to my home','House',()=>switchDemo(false),'secondary'));modal.append(panel);document.body.append(modal);panel.querySelector('button').focus();return;
-  }
   if (nativeConfig?.mode === 'standalone' || bundle?.mode === 'standalone') return openStandaloneSync();
   lastFocus=document.activeElement;modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Sync & connect');
   const panel=el('section','sync-panel'); const close=button('Back to home','ArrowLeft',closeModal,'back-button');
@@ -276,10 +254,9 @@ async function openSync(){
   const text=el('div');text.append(el('h3','','Open on your iPhone'),el('p','','Scan with your camera to control this same home from your phone over Wi-Fi.'),el('p','sync-note','To sync settings from the iPhone app, pair it with your Mac in House Control → Pair iPhone. Keep House Control and TV Bridge running on your Mac.'));
   if(nativeConfig?.endpoint || !nativeConfig){content.append(qr,text);QRCode.toCanvas(qr,remoteURL(bundle?.endpoint),{width:220,margin:2,errorCorrectionLevel:'M',color:{dark:'#0a0e1a',light:'#ffffff'}}).catch(()=>qr.remove());}
   else text.append(el('p','','Connect your TV by running ./house-tv/deploy.py on your Mac.'));
-  panel.append(content,el('div','sync-state',demo?'Demonstration home':online?'Connected to Mac · refreshes every 2 seconds':'Mac is offline. Showing your last saved home.'));
+  panel.append(content,el('div','sync-state',online?'Connected to Mac · refreshes every 2 seconds':'Mac is offline. Showing your last saved home.'));
   modal.append(panel);document.body.append(modal);close.focus();
 }
-async function switchDemo(enabled){await api('/api/demo',{enabled});closeModal();world?.dispose();config=null;await boot();}
 async function openStandaloneSync() {
   if (modal) closeModal();
   lastFocus=document.activeElement;modal=el('div','modal-backdrop');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','TV connections');
@@ -301,7 +278,7 @@ async function openStandaloneSync() {
     const file=el('input','plan-file');file.type='file';file.accept='.json,application/json';file.setAttribute('aria-label','Import House Control floor plan');
     file.onchange=async()=>{if(!file.files?.[0])return;try{const data=JSON.parse(await file.files[0].text());await api('/api/import',data);toast('Floor plan saved on TV');closeModal();}catch(error){message.textContent=error.message;}};
     const importRow=el('div','import-row');importRow.append(el('span','','Import floor plan JSON'),file);if(!nativeConfig)content.append(importRow);content.append(message);
-    content.append(button('Home Assistant & Hue','Wifi',showServices,connected.length?'secondary':'primary'),button('Explore demo home','House',()=>switchDemo(true),'secondary'));
+    content.append(button('Home Assistant & Hue','Wifi',showServices,connected.length?'secondary':'primary'));
     // Coming back from the hubs page the focused button is gone: land on the hubs button again.
     if(!modal.contains(document.activeElement))content.querySelector('button')?.focus();
   }
@@ -465,13 +442,9 @@ if(nativeConfig){
   document.addEventListener('keydown',e=>{if(e.key==='Enter'&&field(e.target)&&e.target.readOnly){e.preventDefault();e.stopImmediatePropagation();const n=e.target;n.readOnly=false;n.setSelectionRange?.(n.value.length,n.value.length);window.HouseTV?.keyboard?.();}},true);
 }
 document.addEventListener('visibilitychange',()=>world?.setRunning(!document.hidden));
-async function loadDemo(){
-  demo=true;online=false;const raw=await(await fetch('./plans/demo-loft.json')).json();config=normalize(raw);
-  store.state={lights:Object.fromEntries(config.lights.map(d=>[d.id,{on:true,brightness:.75,temp:3000,color:null}])),acs:Object.fromEntries(config.acs.map(d=>[d.id,{on:false,target:23,mode:'cool',fan:'auto'}])),scene:null};render();
-}
 function showSetup(error){
   app.replaceChildren();const box=el('div','setup');box.append(icon('House',58),el('h1','','Your home belongs on the big screen'),el('p','','Import your home once with sync-tv.py or from your phone, then connect Home Assistant or Hue on this TV. Your Mac is not needed for everyday control.'),el('p','setup-error',error.message));
-  box.append(button('Try again','RefreshCw',()=>location.reload(),'primary'),button('Explore demo','House',loadDemo,'secondary'));app.append(box);box.querySelector('button').focus();
+  box.append(button('Try again','RefreshCw',()=>location.reload(),'primary'));app.append(box);box.querySelector('button').focus();
 }
 async function boot(){
   try {const next=await api('/api/home');config=normalize(next.plan);bundle=next;online=!!(next.controlReady ?? next.macOnline);store.state=next.state;render();apply(next);}
@@ -479,7 +452,7 @@ async function boot(){
   setTimeout(poll,1800);
 }
 async function poll(){
-  if(!demo&&!document.hidden&&!busy)try{const next=await api('/api/home');if(!config||bundle?.revision!==next.revision){world?.dispose();room='all';config=normalize(next.plan);store.state=next.state;bundle=next;online=!!(next.controlReady ?? next.macOnline);render();}apply(next);}catch(error){if(online)console.warn('TV_CONNECTION',error.message);online=false;update();}
+  if(!document.hidden&&!busy)try{const next=await api('/api/home');if(!config||bundle?.revision!==next.revision){world?.dispose();room='all';config=normalize(next.plan);store.state=next.state;bundle=next;online=!!(next.controlReady ?? next.macOnline);render();}apply(next);}catch(error){if(online)console.warn('TV_CONNECTION',error.message);online=false;update();}
   setTimeout(poll,1800);
 }
 boot();

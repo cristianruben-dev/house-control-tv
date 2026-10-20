@@ -112,7 +112,7 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> { ((android.view.inputmethod.InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(web, 0); });
         }
         @JavascriptInterface public void request(int id, String path, String body) {
-            if (!java.util.Arrays.asList("/api/demo/action","/api/demo","/api/home","/api/action","/api/import","/api/connections","/api/connections/discover","/api/homeassistant/connect","/api/homeassistant/disconnect","/api/hue/pair","/api/hue/disconnect").contains(path)) return;
+            if (!java.util.Arrays.asList("/api/home","/api/action","/api/import","/api/connections","/api/connections/discover","/api/homeassistant/connect","/api/homeassistant/disconnect","/api/hue/pair","/api/hue/disconnect").contains(path)) return;
             network.execute(() -> {
                 JSONObject result;
                 try {
