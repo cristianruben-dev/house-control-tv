@@ -304,3 +304,15 @@ header { justify-content: flex-end; }
 [data-mode="light"] .settings-section.active { background: rgba(0, 0, 0, .08); color: #1c1c1e; }
 [data-mode="light"] .settings-hint { color: rgba(28, 28, 30, .6); }
 [data-mode="light"] .settings-row { background: rgba(0, 0, 0, .05); }
+
+/* ---- the lights and Lights off are solid tiles, not glass: they read the same over any wallpaper ------- */
+
+.device-list .light-row, .all-off { background: linear-gradient(180deg, #2f2f33, #242427) !important; }
+.device-list .light-row:not(.on):focus-visible { background: linear-gradient(180deg, #3b3b40, #2e2e32) !important; }
+.device-list .light-row.on, .device-list .light-row.on:focus-visible {
+  background: linear-gradient(180deg, #6b5536, #43392b) !important;
+}
+[data-mode="light"] .device-list .light-row, [data-mode="light"] .all-off { background: linear-gradient(180deg, #fbfbfc, #ececf0) !important; }
+[data-mode="light"] .device-list .light-row.on,
+[data-mode="light"] .device-list .light-row.on:focus-visible { background: linear-gradient(180deg, #f7c383, #f7dbb8) !important; }
+[data-mode="light"] .device-list .light-row:not(.on):focus-visible, [data-mode="light"] .all-off:focus-visible { background: #1c1c1e !important; }
