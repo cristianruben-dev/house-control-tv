@@ -131,7 +131,7 @@ button:focus-visible svg, button:focus-visible small, button:focus-visible stron
 
 /* ---- layout: no app name, room title, Explore button, scenes heading or key hints ------------------- */
 
-#app { grid-template-rows: 4.6rem 3.7rem minmax(0, 1fr); padding-bottom: 1.6rem; }
+#app { grid-template-rows: 5.4rem 4.6rem minmax(0, 1fr); padding-bottom: 1.6rem; }
 header { justify-content: flex-end; }
 
 /* The model sits on a glass card, like the home screen's widget. */
@@ -232,6 +232,17 @@ header { justify-content: flex-end; }
 [data-mode="light"] button:focus-visible svg, [data-mode="light"] button:focus-visible small,
 [data-mode="light"] button:focus-visible strong { color: #fff !important; }
 [data-mode="light"] .scenes .scene-button:focus-visible, [data-mode="light"] .device-list .light-row:focus-visible { border-color: #1c1c1e !important; }
+
+/* ---- the header and the room tabs at the launcher's size: pills 42dp high, 15sp text ------------------ */
+
+.room-tab { height: 3rem; padding: 0 1.5rem; font-size: 1.05rem; }
+.room-tab svg { width: 1.3rem; height: 1.3rem; }
+.rooms { padding: .35rem; }
+.sync-button { padding: .85rem 1.4rem; font-size: 1rem; }
+.sync-button svg { width: 1.25rem; height: 1.25rem; }
+#status { font-size: .95rem; padding: .75rem 1.2rem; }
+.connection { gap: 1rem; }
+.all-off { padding: .9rem 1rem; font-size: .95rem; }
 
 /* ---- light mode: near-black text on the white glass and over the wallpaper ----------------------------- */
 
