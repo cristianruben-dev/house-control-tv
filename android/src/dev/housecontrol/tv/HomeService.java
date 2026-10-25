@@ -47,13 +47,17 @@ public final class HomeService extends Service {
         if(!fromApp&&next.optLong("at")<appearance(p.getString("appearance","{}")).optLong("at"))return;
         p.edit().putString("appearance",next.toString()).apply();
     }
+    /** The launcher's 12/24-hour choice, so this app's clock matches the home screen's (kept apart from the look). */
+    static void storeClock(Context c,String raw){
+        try{JSONObject in=new JSONObject(raw==null?"{}":raw);if(in.has("clock24"))c.getSharedPreferences("connection",MODE_PRIVATE).edit().putBoolean("clock24",in.getBoolean("clock24")).apply();}catch(JSONException ignored){}
+    }
     @Override public void onCreate(){super.onCreate();try{initialize(this);}catch(Exception ignored){}}
     @Override public IBinder onBind(Intent intent){if(sharedEngine!=null&&!ACTIVITY_BIND.equals(intent.getAction()))sharedEngine.setWidgetActive(true);return new Binder(){
         @Override protected boolean onTransact(int code,Parcel data,Parcel reply,int flags)throws RemoteException{
             if(!trusted(Binder.getCallingUid())){reply.writeException(new SecurityException("Solo un launcher vinculado puede acceder a esta casa."));return true;}
             JSONObject result;
             try{
-                if(code==5){storeAppearance(HomeService.this,data.readString(),false);reply.writeNoException();reply.writeString("{\"ok\":true}");return true;}
+                if(code==5){String raw=data.readString();storeAppearance(HomeService.this,raw,false);storeClock(HomeService.this,raw);reply.writeNoException();reply.writeString("{\"ok\":true}");return true;}
                 if(sharedEngine==null)throw new IllegalStateException("Abre House Control para terminar de configurar la TV.");
                 if(code==1){result=sharedEngine.home();}
                 else if(code==2){String id=data.readString();result=sharedEngine.action(new JSONObject().put("kind","scene").put("id",id));}

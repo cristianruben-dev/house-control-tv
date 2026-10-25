@@ -1,7 +1,7 @@
 import './polyfills.js';
 import './style.css';
 import './theme.css';
-import { createElement, House, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, SunMoon, Layers, Image } from 'lucide';
+import { createElement, House, Settings, Settings2, ChevronLeft, ChevronRight, Lightbulb, Power, Minus, Plus, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, SunMoon, Layers, Image } from 'lucide';
 import QRCode from 'qrcode';
 import { normalize } from './vendor/config.js';
 import { createWorld } from './vendor/three/world.js';
@@ -10,7 +10,7 @@ import { api, nativeConfig, remoteURL } from './api.js';
 const app = document.querySelector('#app');
 const $ = (s) => document.querySelector(s);
 function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
-const icons = { House, Settings2, Lightbulb, Power, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, Minus, Plus, ChevronLeft, ChevronRight, SunMoon, Layers, Image };
+const icons = { House, Settings, Settings2, Lightbulb, Power, Snowflake, Sun, Moon, Sofa, Film, DoorOpen, Wifi, Rotate3d, Check, ArrowLeft, Smartphone, RefreshCw, Minus, Plus, ChevronLeft, ChevronRight, SunMoon, Layers, Image };
 
 /**
  * The look: dark or light mode tints the glass darker or lighter, by its opacity in percent, over one of the
@@ -117,10 +117,8 @@ function lightTile(d) {
   return b;
 }
 function update() {
-  if (!config || !$('#status')) return;
+  if (!config || !$('#lights-on')) return;
   const on = Object.values(store.state.lights).filter(s => s.on).length;
-  $('#status').textContent = bundle?.mode === 'standalone' ? (bundle.connectionLabel || (online ? 'TV conectada' : 'Conecta tus dispositivos en la TV')) : online ? 'Sincronizado con la Mac' : 'Mac sin conexión · solo ver';
-  $('#status').classList.toggle('offline', !online);
   $('#lights-on').textContent = on;
   $('#lights-total').textContent = 'de ' + config.lights.length + ' encendidas';
   $('#active-scene').textContent = config.scenes.find(s => s.id === store.state.scene)?.name || 'Control manual';
@@ -144,11 +142,16 @@ function update() {
 function sceneIcon(s) { return ({ sun:'Sun', sofa:'Sofa', film:'Film', moon:'Moon', door:'DoorOpen' })[s.icon] || 'Sun'; }
 function render() {
   app.replaceChildren(); sceneNodes.clear();
+  // The launcher's top bar: greeting and date over a big clock on the left, the app's pills on the right.
   const header = el('header');
-  const connection = el('div','connection'); const status = el('span'); status.id='status';
-  const clock = el('time'); clock.id='clock';
-  connection.append(status, clock, button('Ajustes', 'Settings2', ()=>openSettings(), 'settings-button'), button('Sincronizar y conectar', 'Smartphone', openSync, 'sync-button'));
-  header.append(connection);
+  const when = el('div','when'); const line = el('div','greeting-line'); const greeting = el('span','greeting'); greeting.id='greeting'; const date = el('span','date'); date.id='date';
+  line.append(greeting, el('span','dot','·'), date);
+  const time = el('div','time-line'); const clock = el('time'); clock.id='clock'; const ampm = el('span','ampm'); ampm.id='ampm';
+  time.append(clock, ampm); when.append(line, time);
+  // No connection badge: Sync shows how the TV is connected.
+  const connection = el('div','connection');
+  connection.append(button('Sincronizar', 'Smartphone', openSync, 'sync-button'), button('Ajustes', 'Settings', ()=>openSettings(), 'settings-button'));
+  header.append(when, connection);
   const tabs = el('nav','rooms'); tabs.setAttribute('aria-label','Cuartos');
   for (const r of [{id:'all',name:'Toda la casa'}, ...config.rooms]) {
     const b = button(r.name, r.id==='all'?'House':null,()=>selectRoom(r.id),'room-tab'); b.dataset.room=r.id; b.classList.toggle('selected',r.id===room); b.setAttribute('aria-pressed',r.id===room); tabs.append(b);
@@ -184,7 +187,14 @@ function render() {
   requestAnimationFrame(()=>tabs.querySelector('button').focus({preventScroll:true}));
   window.__houseTV={get config(){return config;},get state(){return store.state;},get online(){return online;},get world(){return world;},command,selectRoom};
 }
-function tickClock(){if($('#clock'))$('#clock').textContent=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});}
+// Like the launcher: the TV's 24-hour "HH:mm" or "h:mm" with a. m./p. m., and its greeting by the hour over the date.
+function tickClock(){
+  const now=new Date(),h=now.getHours(),mm=String(now.getMinutes()).padStart(2,'0'),h24=nativeConfig?.clock24!==false;if(!$('#clock'))return;
+  $('#clock').textContent=h24?`${String(h).padStart(2,'0')}:${mm}`:`${h%12||12}:${mm}`;
+  $('#ampm').textContent=h24?'':h<12?'a. m.':'p. m.';
+  $('#greeting').textContent=h<5?'Buenas noches':h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches';
+  $('#date').textContent=`${now.toLocaleDateString('es-MX',{weekday:'long'})} ${now.getDate()} de ${now.toLocaleDateString('es-MX',{month:'long'})}`;
+}
 setInterval(tickClock,15000);
 let modalCleanup = null;
 function closeModal(){modalCleanup?.();modalCleanup=null;modal?.remove();modal=null;lastFocus?.focus();}
@@ -347,8 +357,8 @@ function navigate(key){
   // The header's buttons: left and right between them, down to the room tabs.
   if(!modal && current?.matches('.sync-button, .settings-button')){
     if(key==='ArrowDown')return focus(selectedRoom());
-    if(key==='ArrowLeft'&&current.matches('.sync-button'))return focus($('.settings-button'));
-    if(key==='ArrowRight'&&current.matches('.settings-button'))return focus($('.sync-button'));
+    if(key==='ArrowLeft'&&current.matches('.settings-button'))return focus($('.sync-button'));
+    if(key==='ArrowRight'&&current.matches('.sync-button'))return focus($('.settings-button'));
     return true;
   }
   // Settings: up and down along the sections, right into the options; left from the options' first column back.

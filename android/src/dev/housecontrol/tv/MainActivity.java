@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
     @Override protected void onDestroy() { network.shutdownNow(); if(web!=null){web.destroy();web=null;} if(homeBound){unbindService(homeConnection);homeBound=false;} super.onDestroy(); }
     final class NativeBridge {
         @JavascriptInterface public String getConfig() {
-            try { return new JSONObject().put("mode","standalone").put("endpoint", localServer==null?"":localServer.endpoint()).put("token", prefs.getString("remoteKey", "")).put("version", engine==null?"":engine.version()).put("appearance", HomeService.appearance(prefs.getString("appearance", "{}"))).toString(); }
+            try { return new JSONObject().put("mode","standalone").put("endpoint", localServer==null?"":localServer.endpoint()).put("token", prefs.getString("remoteKey", "")).put("version", engine==null?"":engine.version()).put("appearance", HomeService.appearance(prefs.getString("appearance", "{}"))).put("clock24", prefs.contains("clock24") ? prefs.getBoolean("clock24", true) : android.text.format.DateFormat.is24HourFormat(MainActivity.this)).toString(); }
             catch(Exception e){ return "{}"; }
         }
         @JavascriptInterface public void exit() { runOnUiThread(() -> finish()); }

@@ -316,3 +316,23 @@ header { justify-content: flex-end; }
 [data-mode="light"] .device-list .light-row.on,
 [data-mode="light"] .device-list .light-row.on:focus-visible { background: linear-gradient(180deg, #f7c383, #f7dbb8) !important; }
 [data-mode="light"] .device-list .light-row:not(.on):focus-visible, [data-mode="light"] .all-off:focus-visible { background: #1c1c1e !important; }
+
+/* ---- the launcher's top bar (1rem ≈ 10dp): greeting and date over a 52sp clock, 42dp pills on the right ---- */
+
+#app { grid-template-rows: 10.4rem 4.6rem minmax(0, 1fr); padding: 0 5.6rem 1.6rem; }
+header { justify-content: space-between; align-items: flex-end; padding: 2.6rem 0 0; }
+.when { display: flex; flex-direction: column; min-width: 0; margin-bottom: 1.1rem; }
+.greeting-line { display: flex; align-items: baseline; margin-left: .4rem; font-size: 1.2rem; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; white-space: nowrap; }
+.greeting { color: var(--text-dim); }
+.greeting-line .dot { margin: 0 1rem; letter-spacing: 0; color: var(--text-dim); opacity: .65; }
+.date { color: var(--text-soft); }
+.time-line { display: flex; align-items: flex-end; margin-top: .6rem; }
+#clock { font-size: 5.2rem; font-weight: 300; letter-spacing: -.04em; line-height: .9; color: var(--text); }
+.ampm { margin: 0 0 .5rem .6rem; font-size: 1.5rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--text-soft); }
+.connection { gap: 1rem; margin-bottom: .2rem; }
+#status, .sync-button { height: 4.2rem; border-radius: 2.1rem; padding: 0 2rem 0 1.6rem; font-size: 1.5rem; letter-spacing: .01em; }
+.sync-button { gap: .9rem; }
+.sync-button svg { width: 2rem; height: 2rem; }
+.settings-button { width: 4.2rem; height: 4.2rem; }
+.settings-button svg { width: 2.2rem; height: 2.2rem; }
+
