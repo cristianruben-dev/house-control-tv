@@ -51,6 +51,13 @@ function need(cond, msg) {
 
 const isPoint = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
 
+// Yard margins per side; the ground always reaches a little past the exterior walls.
+function sides(m) {
+  const one = (v) => Math.max(0.15, Number.isFinite(v) ? v : 0);
+  if (typeof m === 'number') return { left: one(m), right: one(m), back: one(m), front: one(m) };
+  return { left: one(m.left), right: one(m.right), back: one(m.back), front: one(m.front) };
+}
+
 export function normalize(raw) {
   need(raw && typeof raw === 'object', 'El plano debe ser un objeto JSON');
   need(Array.isArray(raw.rooms) && raw.rooms.length > 0, 'El plano necesita al menos un cuarto en "rooms"');
@@ -119,8 +126,9 @@ export function normalize(raw) {
     rooms,
     openings,
     furniture: raw.furniture || [],
-    // Optional lawn around the house: { margin, color }.
-    yard: raw.yard ? { margin: raw.yard.margin ?? 1.5, color: raw.yard.color || '#6e9b4c' } : null,
+    // Optional lawn around the house: { margin, color }, margin in metres or per side { left, right, back, front }.
+    // `ground`: the yard's height below the floors, in metres (0 or negative).
+    yard: raw.yard ? { margin: sides(raw.yard.margin ?? 1.5), color: raw.yard.color || '#6e9b4c', ground: Math.min(0, Number(raw.yard.ground) || 0) } : null,
     lights,
     acs,
     scenes,

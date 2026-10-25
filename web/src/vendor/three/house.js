@@ -73,20 +73,30 @@ export function buildHouse(config, camDir) {
   const { minX, minZ, maxX, maxZ } = config.bounds;
 
   // Plinth the model stands on: dark, or soil topped with a lawn when the plan has a yard.
-  const m = config.yard ? config.yard.margin : 0.35;
-  const plinth = box(maxX - minX + m * 2, 0.3, maxZ - minZ + m * 2, mat(config.yard ? '#4a3a2a' : '#141927', { rough: 0.9 }), { r: 0.12 });
-  at(plinth, (minX + maxX) / 2, config.yard ? -0.325 : -0.305, (minZ + maxZ) / 2); // a lawn sits on top, under the floors
+  const m = config.yard ? config.yard.margin : { left: 0.35, right: 0.35, back: 0.35, front: 0.35 };
+  const ground = { x: minX - m.left, z: minZ - m.back, w: maxX - minX + m.left + m.right, d: maxZ - minZ + m.back + m.front };
+  const plinth = box(ground.w, 0.3, ground.d, mat(config.yard ? '#4a3a2a' : '#141927', { rough: 0.9 }), { r: 0.12 });
+  // The yard can lie below the floors (`ground` < 0): the house then stands on a concrete foundation.
+  const G = config.yard ? config.yard.ground : 0;
+  at(plinth, ground.x + ground.w / 2, config.yard ? G - 0.325 : -0.305, ground.z + ground.d / 2); // a lawn sits on top, under the floors
   plinth.receiveShadow = true;
   group.add(plinth);
   if (config.yard) {
-    const lawn = floorMesh({ x: minX - m + 0.1, z: minZ - m + 0.1, w: maxX - minX + m * 2 - 0.2, d: maxZ - minZ + m * 2 - 0.2 }, 'grass');
-    lawn.position.y = -0.012;
+    const lawn = floorMesh({ x: ground.x + 0.1, z: ground.z + 0.1, w: ground.w - 0.2, d: ground.d - 0.2 }, 'grass');
+    lawn.position.y = G - 0.012;
     const grass = lawn.material.clone();
     grass.emissive = new THREE.Color('#ffffff');
     grass.emissiveMap = grass.map;
     grass.emissiveIntensity = 0.32;
     lawn.material = grass;
     group.add(lawn);
+    if (G < 0) {
+      const concrete = mat('#a7a5a0', { rough: 0.95, emissive: '#a7a5a0', emissiveIntensity: 0.3 });
+      for (const r of config.rooms) {
+        const base = box(r.w + EXT_T, -G - 0.005, r.d + EXT_T, concrete, { r: 0 });
+        group.add(at(base, r.x + r.w / 2, G, r.z + r.d / 2));
+      }
+    }
   }
 
   for (const room of config.rooms) {
@@ -146,7 +156,7 @@ export function buildHouse(config, camDir) {
     const faces = facesOf(s);
 
     if (near) {
-      if (type !== 'door') piece(s, a, b, 0, CURB, t, faces);
+      if (type !== 'door' && type !== 'open') piece(s, a, b, 0, CURB, t, faces);
       continue;
     }
     if (type === 'door' || type === 'open') continue;

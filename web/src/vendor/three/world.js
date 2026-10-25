@@ -144,8 +144,8 @@ export function createWorld(canvas, config, store, { onHover, onPick, background
         new THREE.Vector3(p.x + out.x * 1.3, 1.25, p.z + out.z * 1.3), new THREE.Vector3(3.6, 2.6, 3.6));
       fill = 0.92;
     } else {
-      const yard = config.yard ? config.yard.margin : 0;
-      box = new THREE.Box3(new THREE.Vector3(minX - yard, 0, minZ - yard), new THREE.Vector3(maxX + yard, H * 0.8, maxZ + yard));
+      const y = config.yard?.margin || { left: 0, right: 0, back: 0, front: 0 };
+      box = new THREE.Box3(new THREE.Vector3(minX - y.left, 0, minZ - y.back), new THREE.Vector3(maxX + y.right, H * 0.8, maxZ + y.front));
     }
     const { dist, center: c } = fitDistance(box, rig.goal.az, rig.goal.el, fill);
     rig.goal.dist = dist * rig.zoom;
