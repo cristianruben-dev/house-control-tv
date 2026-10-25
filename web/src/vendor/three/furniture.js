@@ -122,7 +122,7 @@ const builders = {
     );
   },
 
-  diningSet({ width = 1.8, chairs = 6 }) {
+  diningSet({ width = 1.8, chairs = 6, ends = false }) {
     const depth = 0.95;
     const wood = mat('#b48d63', { rough: 0.55 });
     const g = group(
@@ -138,6 +138,13 @@ const builders = {
       const c = chair('#2b2e37');
       c.position.set(-width / 2 + (width / n) * (k + 0.5), 0, side * (depth / 2 + 0.12));
       c.rotation.y = side > 0 ? Math.PI : 0;
+      g.add(c);
+    }
+    // `ends`: one more chair at each end of the table.
+    for (const side of ends ? [-1, 1] : []) {
+      const c = chair('#2b2e37');
+      c.position.set(side * (width / 2 + 0.12), 0, 0);
+      c.rotation.y = -side * Math.PI / 2;
       g.add(c);
     }
     return g;
@@ -293,6 +300,62 @@ const builders = {
     return g;
   },
 
+  // A concrete slab (driveway, patio) with expansion joints every ~1.5 m.
+  driveway({ size = [4, 5], color = '#a7a5a0' }) {
+    const [w, d] = size;
+    const joint = mat(darker(color, 0.8), { rough: 1, emissive: darker(color, 0.8), emissiveIntensity: 0.3 });
+    const g = group(at(box(w, 0.02, d, mat(color, { rough: 0.95, emissive: color, emissiveIntensity: 0.3 }), { r: 0 }), 0, -0.012, 0));
+    for (let x = -w / 2 + 1.5; x < w / 2 - 0.3; x += 1.5) g.add(at(box(0.02, 0.022, d, joint, { r: 0 }), x, -0.012, 0));
+    for (let z = -d / 2 + 1.5; z < d / 2 - 0.3; z += 1.5) g.add(at(box(w, 0.022, 0.02, joint, { r: 0 }), 0, -0.012, z));
+    return g;
+  },
+
+  // A simple car facing +z: `kind` "sedan" (three boxes) or "hatchback" (cabin runs to the back).
+  car({ color = '#2f5fae', kind = 'sedan' }) {
+    const hatch = kind === 'hatchback';
+    const L = hatch ? 3.8 : 4.3, W = hatch ? 1.6 : 1.72;
+    const paint = mat(color, { rough: 0.35, metal: 0.4, emissive: color, emissiveIntensity: 0.18 });
+    const glass = mat('#1d2633', { rough: 0.15 });
+    const cabL = hatch ? 2.15 : 2.0, cabZ = hatch ? -0.5 : -0.15;
+    const g = group(
+      at(box(W, 0.5, L, paint, { r: 0.14 }), 0, 0.24, 0),
+      at(box(W - 0.16, 0.44, cabL, glass, { r: 0.12 }), 0, 0.7, cabZ),
+      at(box(W - 0.2, 0.06, cabL - 0.3, paint, { r: 0.03 }), 0, 1.1, cabZ - 0.05),
+    );
+    const tire = mat('#141414', { rough: 0.9 });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const geo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 20);
+      geo.rotateZ(Math.PI / 2);
+      g.add(at(new THREE.Mesh(geo, tire), sx * (W / 2 - 0.1), 0.3, sz * (L / 2 - 0.72)));
+      g.add(at(box(0.32, 0.08, 0.04, mat(sz > 0 ? '#fff6dc' : '#c0272d', { emissive: sz > 0 ? '#fff6dc' : '#c0272d', emissiveIntensity: 0.6 }), { r: 0.01 }), sx * (W / 2 - 0.3), 0.58, sz * (L / 2 - 0.01)));
+    }
+    return g;
+  },
+
+  // A solid concrete block: a step, a kerb or a raised sidewalk.
+  block({ size = [1, 0.4], height = 0.15, color = '#b3b1ab' }) {
+    return group(at(box(size[0], height, size[1], mat(color, { rough: 0.95, emissive: color, emissiveIntensity: 0.3 }), { r: 0.01 }), 0, 0, 0));
+  },
+
+  // A carport: posts along the front (+z) edge and a translucent corrugated roof sloping to the front.
+  carport({ size = [6, 5], height = 2.4, color = '#c9ccd1' }) {
+    const [w, d] = size;
+    const post = mat('#5a5f69', { rough: 0.5, metal: 0.5 });
+    const sheet = new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
+    const g = new THREE.Group();
+    const posts = Math.max(2, Math.round(w / 3) + 1);
+    for (let i = 0; i < posts; i++) g.add(at(box(0.1, height - 0.15, 0.1, post, { r: 0.01 }), -w / 2 + 0.1 + (w - 0.2) * i / (posts - 1), 0, d / 2 - 0.1));
+    g.add(at(box(w, 0.12, 0.1, post, { r: 0.01 }), 0, height - 0.17, d / 2 - 0.1));
+    const roof = new THREE.Group();
+    roof.add(at(box(w + 0.1, 0.03, d + 0.1, sheet, { r: 0 }), 0, 0, 0));
+    const rib = mat(color, { rough: 0.6, emissive: color, emissiveIntensity: 0.35, opacity: 0.6 });
+    for (let x = -w / 2 + 0.7; x < w / 2; x += 0.7) roof.add(at(box(0.025, 0.03, d + 0.1, rib, { r: 0 }), x, 0.01, 0));
+    roof.position.y = height;
+    roof.rotation.x = Math.atan2(0.25, d); // falls 25 cm toward the front
+    g.add(roof);
+    return g;
+  },
+
   // Stepping stones along z.
   path({ width = 0.9, depth = 3 }) {
     const g = new THREE.Group();
@@ -439,6 +502,10 @@ export function footprint(item) {
     case 'tree': return [(item.height || 3) * 0.55, (item.height || 3) * 0.55];
     case 'bush': return [item.size || 0.7, item.size || 0.7];
     case 'path': return [w || 0.9, item.depth || 3];
+    case 'driveway': return item.size || [4, 5];
+    case 'block': return item.size || [1, 0.4];
+    case 'carport': return item.size || [6, 5];
+    case 'car': return item.kind === 'hatchback' ? [1.6, 3.8] : [1.72, 4.3];
     default: return [0.6, 0.6];
   }
 }
