@@ -336,3 +336,20 @@ header { justify-content: space-between; align-items: flex-end; padding: 2.6rem 
 .settings-button { width: 4.2rem; height: 4.2rem; }
 .settings-button svg { width: 2.2rem; height: 2.2rem; }
 
+/* ---- spacing and tabs: a gap under the header, the content a little lower, tabs that stay inside the strip -- */
+
+#app { grid-template-rows: 10.4rem 5rem minmax(0, 1fr); row-gap: 1.2rem; padding-top: .6rem; }
+/* The selected tab sits inset evenly in the strip; focus no longer grows it past the strip's rounded ends. */
+.rooms { padding: .4rem; gap: .3rem; }
+.room-tab, .room-tab:focus-visible { transform: none; }
+
+/* No dividing lines between the rooms' lights: the room names already group them. */
+.device-section + .device-section { border-top: 0; padding-top: 0; }
+[data-mode="light"] .device-section + .device-section { border-top: 0; }
+
+/* A focused light keeps its tile and shows focus as an edge, like the scenes: a filled tile hid its icon and name. */
+.device-list .light-row:focus-visible { border: 2px solid #fff !important; }
+[data-mode="light"] .device-list .light-row:not(.on):focus-visible { background: linear-gradient(180deg, #fbfbfc, #ececf0) !important; }
+[data-mode="light"] .device-list .light-row:focus-visible { border-color: #1c1c1e !important; }
+[data-mode="light"] .device-list .light-row:focus-visible strong { color: #1c1c1e !important; }
+[data-mode="light"] .all-off:focus-visible { background: #1c1c1e !important; color: #fff !important; }
