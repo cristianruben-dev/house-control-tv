@@ -15,6 +15,8 @@ import javax.net.ssl.*;
  * pin, as the upstream HueService), so another device answering at the bridge's address is refused.
  */
 final class HueClient {
+    /** The bridge has lost the lamp (switched off at the wall, or out of Zigbee range): the command cannot reach it. */
+    static final class Unreachable extends IOException{Unreachable(String message){super(message);}}
     static final class ButtonNotPressed extends IOException{ButtonNotPressed(){super("Presiona el botón redondo del Hue Bridge.");}}
     /** Trusts exactly the pinned certificate; without a pin (pairing), remembers the one it saw. */
     static final class Pin implements X509TrustManager {
@@ -78,7 +80,7 @@ final class HueClient {
     void send(String id,JSONObject patch)throws Exception{
         if(!LocalMapper.hueId(id))throw new IOException("Lámpara Hue desconocida.");JSONObject body=LocalMapper.hueBody(patch);if(body.length()==0)return;
         commandAttempts++;Object answer=call(null,config,null,"PUT","/clip/v2/resource/light/"+id,body);
-        JSONArray errors=answer instanceof JSONObject?((JSONObject)answer).optJSONArray("errors"):null;if(errors!=null&&errors.length()>0)throw new IOException("Hue: "+errors.getJSONObject(0).optString("description","el bridge rechazó el cambio"));
+        JSONArray errors=answer instanceof JSONObject?((JSONObject)answer).optJSONArray("errors"):null;if(errors!=null&&errors.length()>0){String why=errors.getJSONObject(0).optString("description","el bridge rechazó el cambio");if(why.contains("communication issues"))throw new Unreachable("no responde: revisa que su apagador esté encendido");throw new IOException("Hue: "+why);}
     }
     JSONArray data(JSONObject c,String path)throws Exception{Object a=call(null,c,null,"GET",path,null);JSONArray d=a instanceof JSONObject?((JSONObject)a).optJSONArray("data"):null;return d==null?new JSONArray():d;}
 

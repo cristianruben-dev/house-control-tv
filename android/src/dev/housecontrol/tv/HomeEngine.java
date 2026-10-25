@@ -80,7 +80,7 @@ final class HomeEngine {
         JSONObject d,current,desired; synchronized(lock){d=CloudMapper.copy(find(section,id));current=CloudMapper.copy(state.getJSONObject(section).getJSONObject(id));}
         patch=CloudMapper.patch(section,patch,d);if(patch.length()==0)return;
         desired=CloudMapper.copy(current);CloudMapper.merge(desired,patch);
-        JSONObject service=d.optJSONObject("link");if(service!=null&&!service.optString("id").isEmpty()){local(section,id,service,patch,desired);return;}
+        JSONObject service=d.optJSONObject("link");if(service!=null&&!service.optString("id").isEmpty()){try{local(section,id,service,patch,desired);}catch(HueClient.Unreachable e){throw new HueClient.Unreachable(d.optString("name",id)+" "+e.getMessage()+".");}return;}
         commit(section,id,patch);
     }
     void local(String section,String id,JSONObject link,JSONObject patch,JSONObject desired)throws Exception{
@@ -104,7 +104,7 @@ final class HomeEngine {
                     for(int i=0;i<devices.length();i++){JSONObject d=devices.getJSONObject(i),patch=new JSONObject();String deviceId=d.getString("id");
                         if(scene!=null){JSONObject patches=scene.optJSONObject(section);if(patches!=null){CloudMapper.merge(patch,patches.optJSONObject("*"));CloudMapper.merge(patch,patches.optJSONObject(deviceId));}}
                         else if(section.equals("lights")&&(!kind.equals("room")||d.getString("room").equals(id))){if(!(action.opt("on") instanceof Boolean))throw new IOException("Falta un valor de encendido o apagado.");patch.put("on",action.getBoolean("on"));}
-                        if(patch.length()==0)continue;try{if(scene!=null&&section.equals("lights"))synchronized(lock){patch=CloudMapper.difference(CloudMapper.patch(section,patch,d),state.getJSONObject(section).getJSONObject(deviceId));}if(patch.length()>0)change(section,deviceId,patch);}catch(Exception e){errors.add(d.optString("name",deviceId)+": "+safe(e));}
+                        if(patch.length()==0)continue;try{if(scene!=null&&section.equals("lights"))synchronized(lock){patch=CloudMapper.difference(CloudMapper.patch(section,patch,d),state.getJSONObject(section).getJSONObject(deviceId));}if(patch.length()>0)change(section,deviceId,patch);}catch(Exception e){errors.add(e instanceof HueClient.Unreachable?safe(e):d.optString("name",deviceId)+": "+safe(e));}
                     }}
                 if(!errors.isEmpty())throw new IOException(String.join("; ",errors));if(scene!=null)synchronized(lock){state.put("scene",id);save();}
             }else throw new IOException("Acción de TV no compatible.");
