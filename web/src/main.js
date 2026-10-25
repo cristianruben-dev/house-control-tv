@@ -140,7 +140,6 @@ function update() {
     n.power.disabled = !available(); n.minus.disabled = !available() || s.target <= d.min; n.plus.disabled = !available() || s.target >= d.max;
   }
   for (const [id, b] of sceneNodes) { b.classList.toggle('active', id === store.state.scene); b.setAttribute('aria-pressed', id === store.state.scene); b.disabled = !available(); }
-  $('#all-off').disabled = !available();
 }
 function sceneIcon(s) { return ({ sun:'Sun', sofa:'Sofa', film:'Film', moon:'Moon', door:'DoorOpen' })[s.icon] || 'Sun'; }
 function render() {
@@ -164,8 +163,7 @@ function render() {
   stats.append(lightStat,sceneStat);
   stage.append(canvas,homeName,stats);
   const aside = el('aside','controls'); const heading=el('div','controls-heading'); const count=el('span');count.id='device-count';heading.append(el('h2','','Luces'),count);
-  const off=button('Apagar luces','Power',()=>command({kind:room==='all'?'allLights':'room',...(room==='all'?{}:{id:room}),on:false}),'all-off'); off.id='all-off';
-  const list=el('div','device-list'); list.id='device-list'; aside.append(heading,off,list);
+  const list=el('div','device-list'); list.id='device-list'; aside.append(heading,list);
   // Scenes: their own card between the model and the lights, in columns of four (up to two columns).
   const scenes=el('section','scenes'); const sceneHeading=el('div','controls-heading'); const sceneCount=el('span',''); sceneCount.textContent=String(Math.min(8,config.scenes.length));
   sceneHeading.append(el('h2','','Escenas'),sceneCount);
@@ -335,15 +333,13 @@ function navigate(key){
   const all=focusables(),current=document.activeElement;
   const focus=(n)=>{if(n){n.focus({preventScroll:true});n.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});}return true;};
   const selectedRoom=()=>document.querySelector('[data-room="'+room+'"]');
-  // No device filters any more: "the top of the device panel" is the Lights off button.
-  const deviceFilter=()=>$('#all-off');
   const firstDevice=()=>$('#device-list')?.querySelector('button:not(:disabled)');
   const scene=()=>[...sceneNodes.values()].find(b=>b.classList.contains('active')) || [...sceneNodes.values()][0];
   const firstScene=()=>[...sceneNodes.values()].find(b=>!b.disabled);
   const tiles=()=>[...($('#device-list')?.querySelectorAll('button:not(:disabled)')||[])];
   if(!modal && current?.matches('[data-room]')){
     const tabs=[...document.querySelectorAll('[data-room]')],i=tabs.indexOf(current);
-    if(key==='ArrowDown')return focus(firstScene()||deviceFilter());
+    if(key==='ArrowDown')return focus(firstScene()||firstDevice());
     if(key==='ArrowUp')return focus($('.sync-button'));
     if(key==='ArrowLeft')return focus(tabs[Math.max(0,i-1)]);
     if(key==='ArrowRight')return focus(tabs[i+1]||current);
@@ -368,18 +364,12 @@ function navigate(key){
       return key==='ArrowLeft'?focus(modal.activeSection()):true;
     }
   }
-  if(current?.matches('#all-off')){
-    if(key==='ArrowUp')return focus(selectedRoom());
-    if(key==='ArrowDown')return focus(firstDevice()||current);
-    if(key==='ArrowLeft')return focus(scene()||current);
-    if(key==='ArrowRight')return true;
-  }
   // Lights sit in per-room sections: move by position, left and right only within the same row; past the
-  // edges go to Lights off or the scenes.
+  // edges go up to the room tabs or left to the scenes.
   if(current?.matches('.light-row')){
     const next=nearest(current,tiles(),key,key==='ArrowLeft'||key==='ArrowRight');
     if(next)return focus(next);
-    if(key==='ArrowUp')return focus($('#all-off'));
+    if(key==='ArrowUp')return focus(selectedRoom());
     if(key==='ArrowLeft')return focus(nearest(current,[...sceneNodes.values()].filter(b=>!b.disabled),key)||scene()||current);
     return true;
   }
@@ -390,7 +380,7 @@ function navigate(key){
     if(key==='ArrowUp')return focus(row>0?scenes[i-1]:selectedRoom());
     if(key==='ArrowDown')return focus(row<3&&scenes[i+1]?scenes[i+1]:current);
     if(key==='ArrowLeft')return focus(scenes[i-4]||current);
-    if(key==='ArrowRight')return focus(scenes[i+4]||nearest(current,tiles(),key)||$('#all-off'));
+    if(key==='ArrowRight')return focus(scenes[i+4]||nearest(current,tiles(),key)||firstDevice()||current);
   }
   if(!all.includes(current)){focus(modal?all[0]:scene()||all[0]);return;}
   // In dialogs, left and right stay on the same row: off its end, focus stays put.
