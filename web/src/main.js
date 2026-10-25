@@ -79,8 +79,8 @@ async function command(action) {
   if (!available()) { toast(bundle?.mode === 'standalone' ? (bundle.connectionLabel || 'Conecta tus dispositivos') + ' en Sincronizar y conectar.' : 'Abre House Control y TV Bridge en tu Mac para controlar los dispositivos.'); return; }
   busy = true; app.classList.add('pending');
   try {
+    // The home redraws with the change; only failures get a toast.
     const result = await api('/api/action', action); apply(result.home);
-    toast(result.direct ? (action.kind === 'acTarget' ? 'Temperatura guardada en la TV' : 'Dispositivo actualizado directamente') : 'Orden enviada a House Control');
   } catch (error) { toast(error.message); }
   finally { busy = false; app.classList.remove('pending'); }
 }
